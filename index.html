@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff" id="themeColor">
+<meta name="description" content="A fast, single-file audio player. Drop an MP3, WAV, FLAC, M4A or OGG to play it right in your browser — ID3 tags, cover art and a waveform. Nothing uploaded.">
+<link rel="canonical" href="https://audio-viewer.us/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="File Viewer">
+<meta property="og:title" content="Audio Viewer">
+<meta property="og:description" content="A fast, single-file audio player. Drop an MP3, WAV, FLAC, M4A or OGG to play it right in your browser — ID3 tags, cover art and a waveform. Nothing uploaded.">
+<meta property="og:url" content="https://audio-viewer.us/">
+<meta property="og:image" content="https://audio-viewer.us/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Audio Viewer">
+<meta name="twitter:description" content="Play any audio file in your browser — MP3, WAV, FLAC, M4A, OGG, Opus &amp; more. ID3 tags, cover art, waveform. Runs locally, nothing uploaded.">
+<meta name="twitter:image" content="https://audio-viewer.us/og.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Audio Viewer","url":"https://audio-viewer.us/","applicationCategory":"UtilityApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"A fast, single-file audio player that plays MP3, WAV, FLAC, M4A, OGG and Opus files with ID3 tags, cover art and a waveform — entirely in your browser."}</script>
+<title>Audio Viewer</title>
+<!-- Privacy-friendly, cookieless analytics (self-hosted Plausible) -->
+<script defer data-domain="audio-viewer.us" src="https://plausible.thompsonblack.us/js/script.outbound-links.file-downloads.tagged-events.js"></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ctitle%3Efile_type_audio%3C%2Ftitle%3E%3Cpath%20d%3D%22M17.229%2C4a.9.9%2C0%2C0%2C0-.569.232l-7.6%2C6.32a1.158%2C1.158%2C0%2C0%2C1-.955.328H3.208A1.2%2C1.2%2C0%2C0%2C0%2C2%2C12.088v7.826A1.2%2C1.2%2C0%2C0%2C0%2C3.208%2C21.12H8.1a1.158%2C1.158%2C0%2C0%2C1%2C.955.328l7.6%2C6.32c.521.433%2C1.081.224%2C1.081-.289V4.522A.494.494%2C0%2C0%2C0%2C17.229%2C4ZM27%2C6.3%2C25.209%2C8.093a14.708%2C14.708%2C0%2C0%2C1%2C0%2C15.844l1.785%2C1.776A17.19%2C17.19%2C0%2C0%2C0%2C27%2C6.3Zm-4.333%2C4.323L20.905%2C12.4a6.035%2C6.035%2C0%2C0%2C1%2C0%2C7.237l1.756%2C1.756a8.554%2C8.554%2C0%2C0%2C0%2C.01-10.769Z%22%20style%3D%22fill%3A%2300007f%22%2F%3E%3C%2Fsvg%3E">
+<link rel="alternate icon" href="/favicon.ico" sizes="any">
+<link rel="manifest" href="/site.webmanifest">
+<style>
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:700;font-display:swap;src:url("fonts/JetBrainsMono-Bold.subset.woff2") format("woff2");unicode-range:U+0000-00FF,U+2013-2014,U+2018-2019,U+201C-201D,U+2026}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:800;font-display:swap;src:url("fonts/JetBrainsMono-ExtraBold.subset.woff2") format("woff2");unicode-range:U+0000-00FF,U+2013-2014,U+2018-2019,U+201C-201D,U+2026}
+.doc-title,.empty-title,.drop-card,.audio-notice-title{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:-.02em}
+  :root{
+    --bg:#ffffff; --surface:#ffffff; --header-bg:rgba(255,255,255,.9);
+    --text:#1f2328; --muted:#656d76; --border:#d0d7de; --border-soft:#e5e7eb;
+    --accent:#4f46e5; --accent-contrast:#ffffff;
+    --code-bg:#f6f8fa; --code-text:#1f2328; --hover:#f3f4f6;
+    --overlay:rgba(79,70,229,.10); --shadow:rgba(0,0,0,.12);
+    --hdr-h:56px;   /* measured at runtime; the player pane offsets by this so the fixed header never covers it */
+    /* Syntax highlighting variables kept for shell parity (no source plane here) */
+    --hl-comment:#6e7781; --hl-keyword:#cf222e; --hl-tag:#116329; --hl-attr:#0550ae;
+    --hl-string:#0a3069; --hl-number:#0550ae; --hl-title:#8250df; --hl-built:#953800;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;padding:0;background:var(--bg);overflow-x:clip}
+  body{
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";
+    -webkit-font-smoothing:antialiased; line-height:1.55;
+    min-height:100vh; min-height:100dvh; display:flex; flex-direction:column;
+    overflow-wrap:break-word;
+  }
+  /* While viewing, the app fills the viewport and the player pane scrolls
+     internally (lets the header react to scrolling in the pane). */
+  body.viewing{height:100vh; height:100dvh; overflow:hidden}
+  .skip{position:absolute;left:-999px;top:0;background:var(--accent);color:var(--accent-contrast);padding:.5rem .75rem;border-radius:6px;z-index:100}
+  .skip:focus{left:.5rem;top:.5rem}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:30;
+    display:flex; align-items:center; gap:.5rem;
+    padding:.55rem .75rem; padding-top:calc(.55rem + env(safe-area-inset-top));
+    background:var(--header-bg); backdrop-filter:saturate(180%) blur(10px);
+    -webkit-backdrop-filter:saturate(180%) blur(10px);
+    border-bottom:1px solid var(--border-soft);
+  }
+  .brand-icon{flex:0 0 auto; width:24px; height:24px; display:block; border-radius:5px}
+  .doc-title{
+    flex:1 1 auto; min-width:0;
+    font-size:clamp(.9rem,3.3vw,1.1rem); font-weight:600; letter-spacing:-.01em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text);
+  }
+  .actions{flex:0 0 auto; display:flex; align-items:center; gap:.1rem}
+  .iconbtn{
+    display:inline-grid; place-items:center;
+    width:40px; height:40px; padding:0;
+    background:transparent; color:var(--text); border:0; border-radius:9px;
+    cursor:pointer; -webkit-tap-highlight-color:transparent;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .iconbtn:hover{background:var(--hover)}
+  .iconbtn:active{transform:scale(.92)}
+  .iconbtn.active{color:var(--accent); background:var(--overlay)}
+  .iconbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .iconbtn svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+  .iconbtn.iconbtn-gh svg{width:22px;height:22px;fill:currentColor;stroke:none}
+
+  /* Color swatch / picker (native input styled as a round-ish swatch) */
+  .swatch-wrap{display:inline-flex}
+  .swatch{
+    width:40px; height:40px; padding:0; margin:0;
+    border:0; border-radius:9px; background:transparent; cursor:pointer;
+    -webkit-appearance:none; appearance:none; -webkit-tap-highlight-color:transparent;
+  }
+  .swatch:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .swatch::-webkit-color-swatch-wrapper{padding:7px}
+  .swatch::-webkit-color-swatch{border:1px solid var(--border); border-radius:50%}
+  .swatch::-moz-color-swatch{border:1px solid var(--border); border-radius:50%}
+
+  /* ---------- Header while viewing: fixed; collapses to a thick handle ---------- */
+  .hover-zone{display:none}
+  body.viewing .hover-zone{display:block; position:fixed; top:0; left:0; right:0; height:22px; z-index:35; cursor:pointer}
+  /* when the header is collapsed it shrinks to this thick, tappable line sitting over the content */
+  body.viewing.hdr-hidden .hover-zone::before{content:""; position:absolute; top:0; left:0; right:0; height:7px; background:var(--accent); box-shadow:0 1px 6px var(--shadow)}
+  body.viewing.hdr-hidden .hover-zone::after{content:""; position:absolute; top:1.5px; left:50%; transform:translateX(-50%); width:46px; height:4px; border-radius:2px; background:var(--accent-contrast); opacity:.7}
+  body.viewing .topbar{
+    position:fixed; top:0; left:0; right:0; z-index:36;
+    box-shadow:0 6px 22px var(--shadow);
+    transition:transform .28s ease, box-shadow .28s ease;
+  }
+  body.viewing.hdr-hidden .topbar{transform:translateY(-118%); box-shadow:none}
+
+  /* ---------- Quick tooltips (custom; far faster than the native title delay) ---------- */
+  .tip{position:relative}
+  .tip::after{
+    content:attr(data-tip);
+    position:absolute; top:calc(100% + 7px); right:0;
+    background:var(--text); color:var(--bg); font-size:.72rem; font-weight:600; line-height:1.1;
+    white-space:nowrap; padding:.42em .6em; border-radius:6px;
+    opacity:0; pointer-events:none; box-shadow:0 6px 18px var(--shadow);
+    transition:opacity .1s ease .1s; z-index:70;
+  }
+  .tip:hover::after, .tip:focus-visible::after{opacity:1}
+  .tip-up::after{top:auto; bottom:calc(100% + 7px)}
+  .tip-l::after{right:auto; left:0}
+  @media (hover:none){ .tip::after{content:none} }
+
+  /* ---------- Hamburger flyout nav (shared across the viewer family) ---------- */
+  .nav-backdrop{position:fixed; inset:0; z-index:80; background:rgba(0,0,0,.4); opacity:0; pointer-events:none; transition:opacity .2s ease}
+  body.nav-open .nav-backdrop{opacity:1; pointer-events:auto}
+  .nav-panel{
+    position:fixed; top:0; left:0; bottom:0; z-index:81; width:min(80vw,290px);
+    display:flex; flex-direction:column; gap:.1rem; overflow-y:auto;
+    padding:calc(.8rem + env(safe-area-inset-top)) .55rem calc(.8rem + env(safe-area-inset-bottom));
+    background:var(--surface); border-right:1px solid var(--border-soft); box-shadow:0 0 40px var(--shadow);
+    transform:translateX(-100%); visibility:hidden;
+    transition:transform .25s ease, visibility 0s .25s;
+  }
+  body.nav-open .nav-panel{transform:translateX(0); visibility:visible; transition:transform .25s ease}
+  .nav-head{font-weight:700; font-size:.72rem; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); padding:.4rem .8rem .55rem}
+  .nav-item{display:flex; align-items:center; gap:.7rem; padding:.62rem .8rem; border-radius:10px; color:var(--text); text-decoration:none; font-weight:550; font-size:.95rem}
+  .nav-item:hover{background:var(--hover)}
+  .nav-item.nav-active{background:var(--overlay); color:var(--accent)}
+  .nav-item .nav-ico{width:20px; height:20px; flex:0 0 auto; border-radius:4px}
+
+  /* ---------- Main ---------- */
+  main{flex:1 1 auto; width:100%; display:flex; flex-direction:column; min-height:0}
+  .empty{
+    flex:1 1 auto; display:flex; align-items:center; justify-content:center;
+    text-align:center; padding:2rem 1.25rem; cursor:pointer; color:var(--muted);
+  }
+  .empty-inner{
+    max-width:30rem; display:flex; flex-direction:column; align-items:center; gap:.35rem;
+    border:2px dashed var(--border); border-radius:16px; padding:2.25rem 1.5rem; width:100%;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .empty:hover .empty-inner{border-color:var(--accent); background:var(--overlay)}
+  .empty svg{width:46px;height:46px;stroke:var(--accent);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;margin-bottom:.4rem}
+  .empty-title{margin:0;font-size:1.1rem;font-weight:650;color:var(--text)}
+  .empty-sub{margin:0;font-size:.9rem}
+
+  /* ---------- Player (rendered plane; §5 themes the chrome, the player itself stays neutral) ---------- */
+  .playerwrap{
+    flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:calc(1.25rem + var(--hdr-h)) 1rem 2.5rem;
+  }
+  .player-card{
+    max-width:34rem; margin:0 auto; padding:1.4rem 1.4rem 1.5rem;
+    background:var(--surface); border:1px solid var(--border); border-radius:20px;
+    box-shadow:0 10px 34px var(--shadow);
+    display:flex; flex-direction:column; gap:1rem;
+  }
+  .player-head{display:flex; align-items:center; gap:1rem; min-width:0}
+  .cover{width:104px; height:104px; flex:0 0 auto; border-radius:12px; object-fit:cover; border:1px solid var(--border-soft); background:var(--code-bg)}
+  .cover-fallback{width:104px; height:104px; flex:0 0 auto; border-radius:12px; display:grid; place-items:center; background:var(--overlay); color:var(--accent)}
+  .cover-fallback svg{width:44px;height:44px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .player-info{min-width:0; display:flex; flex-direction:column; gap:.15rem}
+  .track-title{margin:0; font-weight:650; font-size:1.06rem; color:var(--text); overflow-wrap:anywhere}
+  .track-line{margin:0; color:var(--muted); font-size:.92rem; overflow-wrap:anywhere}
+  .wave{width:100%; height:88px; display:block; border-radius:10px; background:var(--code-bg); cursor:pointer}
+  .player-card audio{width:100%; display:block}
+  .meta-line{margin:0; text-align:center; color:var(--muted); font-size:.85rem}
+
+  /* ---------- Accept-with-notice / codec-hint card (docx legacy-notice pattern) ---------- */
+  .audio-notice{max-width:34rem; margin:2.5rem auto; padding:1.5rem 1.5rem; border:1px solid var(--border); border-radius:14px; background:var(--overlay); text-align:center}
+  .audio-notice-title{font-weight:650; color:var(--text); margin-bottom:.5rem; font-size:1.05rem; overflow-wrap:anywhere}
+  .audio-notice p{margin:.35rem 0; color:var(--muted); font-size:.92rem; line-height:1.5; overflow-wrap:anywhere}
+  .audio-notice-sub{font-size:.82rem !important; opacity:.85}
+
+  /* ---------- Footer ---------- */
+  .footer{
+    position:relative;
+    border-top:1px solid var(--border-soft);
+    padding:.85rem 2.6rem; padding-bottom:calc(.85rem + env(safe-area-inset-bottom));
+    text-align:center; color:var(--muted); font-size:.8rem; line-height:1.5;
+  }
+  .footer p{margin:0}
+  .footer a{color:var(--muted); text-decoration:underline; text-underline-offset:2px}
+  .footer a:hover{color:var(--accent)}
+  .footer .footer-close{
+    position:absolute; top:50%; right:.4rem; transform:translateY(-50%);
+    display:inline-grid; place-items:center; width:32px; height:32px; padding:0;
+    background:transparent; color:var(--muted); border:0; border-radius:8px; cursor:pointer;
+    -webkit-tap-highlight-color:transparent; transition:background .15s ease, color .15s ease;
+  }
+  .footer-close:hover{background:var(--hover); color:var(--text)}
+  .footer-close:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .footer-close svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+
+  /* ---------- Drop overlay (full-screen drop target) ---------- */
+  .drop-overlay{
+    position:fixed; inset:0; z-index:50; display:none; padding:12px;
+    background:var(--overlay); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  }
+  .drop-overlay.show{display:flex}
+  .drop-card{
+    flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem;
+    border:3px dashed var(--accent); border-radius:20px;
+    background:var(--surface); color:var(--accent); font-size:1.5rem; font-weight:650;
+    box-shadow:0 20px 50px var(--shadow); pointer-events:none;
+  }
+  .drop-card svg{width:72px;height:72px;stroke:var(--accent);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed; left:50%; bottom:calc(1.25rem + env(safe-area-inset-bottom));
+    transform:translateX(-50%) translateY(1rem);
+    background:var(--text); color:var(--bg); padding:.6rem 1rem; border-radius:10px;
+    font-size:.85rem; font-weight:550; box-shadow:0 8px 24px var(--shadow);
+    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; z-index:60;
+    max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  /* ---------- Family router offer card (§6.10) ---------- */
+  /* Spec baseline is 44/45; this shell's nav backdrop/panel sit at 80/81, so the
+     pair is raised together per §6.10 so the card stacks above the whole shell. */
+  .route-backdrop{ position:fixed; inset:0; background:var(--shadow); z-index:84 }
+  .route-card{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:85;
+    background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:16px;
+    box-shadow:0 12px 40px var(--shadow); padding:1.1rem 1.25rem; width:min(92vw,26rem) }
+    .route-card p { margin: 0; overflow-wrap: anywhere; }
+  .route-sub{ color:var(--muted); font-size:.85rem; margin-top:.35rem }
+  .route-actions{ display:flex; gap:.5rem; justify-content:flex-end; margin-top:.9rem }
+  .route-actions button{ border-radius:9px; padding:.55rem .9rem; font:inherit; cursor:pointer }
+  .route-go{ background:var(--accent); color:var(--accent-contrast); border:1px solid var(--accent) }
+  .route-dismiss{ background:transparent; color:var(--text); border:1px solid var(--border) }
+
+  @media (min-width:640px){
+    .topbar{padding-left:1rem; padding-right:1rem}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="hover-zone" id="hoverZone" aria-hidden="true"></div>
+
+<header class="topbar">
+  <button id="btnMenu" class="iconbtn tip tip-l" type="button" data-tip="Menu" aria-label="Open navigation menu" aria-expanded="false" aria-controls="navPanel">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+  </button>
+  <img id="brandIcon" class="brand-icon" alt="" aria-hidden="true">
+  <span class="doc-title" id="docTitle">Audio Viewer</span>
+  <nav class="actions" aria-label="Actions">
+    <button id="btnCopy" class="iconbtn tip" type="button" data-tip="Copy track details" aria-label="Copy track details">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+    </button>
+    <button id="btnClear" class="iconbtn tip" type="button" data-tip="Clear" aria-label="Clear the view">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path></svg>
+    </button>
+    <button id="themeToggle" class="iconbtn tip" type="button" data-tip="Light / dark" aria-label="Switch theme" aria-pressed="false">
+      <svg id="themeIconSun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+      <svg id="themeIconMoon" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path></svg>
+    </button>
+    <span class="swatch-wrap tip" data-tip="Background color">
+      <input id="bgPicker" class="swatch" type="color" value="#ffffff" aria-label="Pick background color">
+    </span>
+    <a id="ghLink" class="iconbtn iconbtn-gh tip" href="https://github.com/MichalAFerber/audio-viewer.us" target="_blank" rel="noopener noreferrer" data-tip="View source on GitHub" aria-label="View source on GitHub">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+    </a>
+  </nav>
+</header>
+
+<main id="main">
+  <section id="empty" class="empty" role="button" tabindex="0" aria-label="Open an audio file">
+    <div class="empty-inner">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+      <p class="empty-title">Drop an audio file to play</p>
+      <p class="empty-sub">Drag &amp; drop anywhere or tap to open. Accepts .mp3, .wav, .flac, .m4a, .aac, .ogg, .oga, .opus, .weba, .mka, .aif, .aiff (and .wma, .mid, .midi with a notice) — your audio never leaves your device.</p>
+    </div>
+  </section>
+  <div id="playerView" class="playerwrap" hidden>
+    <div id="playerCard" class="player-card" hidden>
+      <div class="player-head">
+        <img id="coverArt" class="cover" alt="Album cover art" hidden>
+        <div id="coverFallback" class="cover-fallback" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+        </div>
+        <div class="player-info">
+          <p class="track-title" id="trackTitle"></p>
+          <p class="track-line" id="trackArtist" hidden></p>
+          <p class="track-line" id="trackAlbum" hidden></p>
+        </div>
+      </div>
+      <canvas id="wave" class="wave" aria-label="Waveform — click to seek" role="img" hidden></canvas>
+      <div id="audioMount"></div>
+      <p class="meta-line" id="metaLine"></p>
+    </div>
+    <div id="audioNotice" class="audio-notice" hidden></div>
+  </div>
+</main>
+
+<footer class="footer" id="footer">
+  <p>&copy; 2026 | Created with &#10084;&#65039; by <a href="https://michalferber.dev" target="_blank" rel="noopener noreferrer">Michal Ferber</a>, aka <a href="https://techguywithabeard.com" target="_blank" rel="noopener noreferrer">TechGuyWithABeard</a></p>
+  <button id="btnHideFooter" class="footer-close tip tip-up" type="button" data-tip="Hide footer" aria-label="Hide footer">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+  </button>
+</footer>
+
+<div id="navBackdrop" class="nav-backdrop" aria-hidden="true"></div>
+<aside id="navPanel" class="nav-panel" aria-label="Site navigation">
+  <div class="nav-head">Viewers</div>
+  <nav>
+    <a class="nav-item" href="https://file-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%97%82%EF%B8%8F%3C/text%3E%3C/svg%3E" alt="" aria-hidden="true">Home</a>
+    <a class="nav-item nav-active" aria-current="page" href="https://audio-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ctitle%3Efile_type_audio%3C%2Ftitle%3E%3Cpath%20d%3D%22M17.229%2C4a.9.9%2C0%2C0%2C0-.569.232l-7.6%2C6.32a1.158%2C1.158%2C0%2C0%2C1-.955.328H3.208A1.2%2C1.2%2C0%2C0%2C0%2C2%2C12.088v7.826A1.2%2C1.2%2C0%2C0%2C0%2C3.208%2C21.12H8.1a1.158%2C1.158%2C0%2C0%2C1%2C.955.328l7.6%2C6.32c.521.433%2C1.081.224%2C1.081-.289V4.522A.494.494%2C0%2C0%2C0%2C17.229%2C4ZM27%2C6.3%2C25.209%2C8.093a14.708%2C14.708%2C0%2C0%2C1%2C0%2C15.844l1.785%2C1.776A17.19%2C17.19%2C0%2C0%2C0%2C27%2C6.3Zm-4.333%2C4.323L20.905%2C12.4a6.035%2C6.035%2C0%2C0%2C1%2C0%2C7.237l1.756%2C1.756a8.554%2C8.554%2C0%2C0%2C0%2C.01-10.769Z%22%20style%3D%22fill%3A%2300007f%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">Audio</a>
+    <a class="nav-item" href="https://cert-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M16%203l11%204v8.5c0%207-4.7%2011.9-11%2014-6.3-2.1-11-7-11-14V7l11-4z%22%20fill%3D%22%230369a1%22%2F%3E%3Cpath%20d%3D%22M10.5%2016.2l3.7%203.6L22%2011.8%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">Cert</a>
+    <a class="nav-item" href="https://data-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ctitle%3Efile_type_db%3C%2Ftitle%3E%3Cpath%20d%3D%22M8.562%2C15.256A21.159%2C21.159%2C0%2C0%2C0%2C16%2C16.449a21.159%2C21.159%2C0%2C0%2C0%2C7.438-1.194c1.864-.727%2C2.525-1.535%2C2.525-2V9.7a10.357%2C10.357%2C0%2C0%2C1-2.084%2C1.076A22.293%2C22.293%2C0%2C0%2C1%2C16%2C12.078a22.36%2C22.36%2C0%2C0%2C1-7.879-1.3A10.28%2C10.28%2C0%2C0%2C1%2C6.037%2C9.7v3.55C6.037%2C13.724%2C6.7%2C14.528%2C8.562%2C15.256Z%22%20style%3D%22fill%3A%23c4c7ce%22%2F%3E%3Cpath%20d%3D%22M8.562%2C21.961a15.611%2C15.611%2C0%2C0%2C0%2C2.6.741A24.9%2C24.9%2C0%2C0%2C0%2C16%2C23.155a24.9%2C24.9%2C0%2C0%2C0%2C4.838-.452%2C15.614%2C15.614%2C0%2C0%2C0%2C2.6-.741c1.864-.727%2C2.525-1.535%2C2.525-2v-3.39a10.706%2C10.706%2C0%2C0%2C1-1.692.825A23.49%2C23.49%2C0%2C0%2C1%2C16%2C18.74a23.49%2C23.49%2C0%2C0%2C1-8.271-1.348%2C10.829%2C10.829%2C0%2C0%2C1-1.692-.825V19.96C6.037%2C20.426%2C6.7%2C21.231%2C8.562%2C21.961Z%22%20style%3D%22fill%3A%23c4c7ce%22%2F%3E%3Cpath%20d%3D%22M16%2C30c5.5%2C0%2C9.963-1.744%2C9.963-3.894V23.269a10.5%2C10.5%2C0%2C0%2C1-1.535.762l-.157.063A23.487%2C23.487%2C0%2C0%2C1%2C16%2C25.445a23.422%2C23.422%2C0%2C0%2C1-8.271-1.351c-.054-.02-.106-.043-.157-.063a10.5%2C10.5%2C0%2C0%2C1-1.535-.762v2.837C6.037%2C28.256%2C10.5%2C30%2C16%2C30Z%22%20style%3D%22fill%3A%23c4c7ce%22%2F%3E%3Cellipse%20cx%3D%2216%22%20cy%3D%225.894%22%20rx%3D%229.963%22%20ry%3D%223.894%22%20style%3D%22fill%3A%23c4c7ce%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">Data</a>
+    <a class="nav-item" href="https://docx-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22a%22%20x1%3D%224.494%22%20y1%3D%22-1712.086%22%20x2%3D%2213.832%22%20y2%3D%22-1695.914%22%20gradientTransform%3D%22translate%280%201720%29%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%232368c4%22%2F%3E%3Cstop%20offset%3D%220.5%22%20stop-color%3D%22%231a5dbe%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%231146ac%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ctitle%3Efile_type_word%3C%2Ftitle%3E%3Cpath%20d%3D%22M28.806%2C3H9.705A1.192%2C1.192%2C0%2C0%2C0%2C8.512%2C4.191h0V9.5l11.069%2C3.25L30%2C9.5V4.191A1.192%2C1.192%2C0%2C0%2C0%2C28.806%2C3Z%22%20style%3D%22fill%3A%2341a5ee%22%2F%3E%3Cpath%20d%3D%22M30%2C9.5H8.512V16l11.069%2C1.95L30%2C16Z%22%20style%3D%22fill%3A%232b7cd3%22%2F%3E%3Cpath%20d%3D%22M8.512%2C16v6.5L18.93%2C23.8%2C30%2C22.5V16Z%22%20style%3D%22fill%3A%23185abd%22%2F%3E%3Cpath%20d%3D%22M9.705%2C29h19.1A1.192%2C1.192%2C0%2C0%2C0%2C30%2C27.809h0V22.5H8.512v5.309A1.192%2C1.192%2C0%2C0%2C0%2C9.705%2C29Z%22%20style%3D%22fill%3A%23103f91%22%2F%3E%3Cpath%20d%3D%22M16.434%2C8.2H8.512V24.45h7.922a1.2%2C1.2%2C0%2C0%2C0%2C1.194-1.191V9.391A1.2%2C1.2%2C0%2C0%2C0%2C16.434%2C8.2Z%22%20style%3D%22opacity%3A0.10000000149011612%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M15.783%2C8.85H8.512V25.1h7.271a1.2%2C1.2%2C0%2C0%2C0%2C1.194-1.191V10.041A1.2%2C1.2%2C0%2C0%2C0%2C15.783%2C8.85Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M15.783%2C8.85H8.512V23.8h7.271a1.2%2C1.2%2C0%2C0%2C0%2C1.194-1.191V10.041A1.2%2C1.2%2C0%2C0%2C0%2C15.783%2C8.85Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M15.132%2C8.85H8.512V23.8h6.62a1.2%2C1.2%2C0%2C0%2C0%2C1.194-1.191V10.041A1.2%2C1.2%2C0%2C0%2C0%2C15.132%2C8.85Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M3.194%2C8.85H15.132a1.193%2C1.193%2C0%2C0%2C1%2C1.194%2C1.191V21.959a1.193%2C1.193%2C0%2C0%2C1-1.194%2C1.191H3.194A1.192%2C1.192%2C0%2C0%2C1%2C2%2C21.959V10.041A1.192%2C1.192%2C0%2C0%2C1%2C3.194%2C8.85Z%22%20style%3D%22fill%3Aurl%28%23a%29%22%2F%3E%3Cpath%20d%3D%22M6.9%2C17.988c.023.184.039.344.046.481h.028c.01-.13.032-.287.065-.47s.062-.338.089-.465l1.255-5.407h1.624l1.3%2C5.326a7.761%2C7.761%2C0%2C0%2C1%2C.162%2C1h.022a7.6%2C7.6%2C0%2C0%2C1%2C.135-.975l1.039-5.358h1.477l-1.824%2C7.748H10.591L9.354%2C14.742q-.054-.222-.122-.578t-.084-.52H9.127q-.021.189-.084.561c-.042.249-.075.432-.1.552L7.78%2C19.871H6.024L4.19%2C12.127h1.5l1.131%2C5.418A4.469%2C4.469%2C0%2C0%2C1%2C6.9%2C17.988Z%22%20style%3D%22fill%3A%23fff%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">DOCX</a>
+    <a class="nav-item" href="https://eml-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ctitle%3Efile_type_outlook%3C%2Ftitle%3E%3Cpath%20d%3D%22M19.484%2C7.937v5.477L21.4%2C14.619a.489.489%2C0%2C0%2C0%2C.21%2C0l8.238-5.554a1.174%2C1.174%2C0%2C0%2C0-.959-1.128Z%22%20style%3D%22fill%3A%230072c6%22%2F%3E%3Cpath%20d%3D%22M19.484%2C15.457l1.747%2C1.2a.522.522%2C0%2C0%2C0%2C.543%2C0c-.3.181%2C8.073-5.378%2C8.073-5.378V21.345a1.408%2C1.408%2C0%2C0%2C1-1.49%2C1.555H19.483V15.457Z%22%20style%3D%22fill%3A%230072c6%22%2F%3E%3Cpath%20d%3D%22M10.44%2C12.932a1.609%2C1.609%2C0%2C0%2C0-1.42.838%2C4.131%2C4.131%2C0%2C0%2C0-.526%2C2.218A4.05%2C4.05%2C0%2C0%2C0%2C9.02%2C18.2a1.6%2C1.6%2C0%2C0%2C0%2C2.771.022%2C4.014%2C4.014%2C0%2C0%2C0%2C.515-2.2%2C4.369%2C4.369%2C0%2C0%2C0-.5-2.281A1.536%2C1.536%2C0%2C0%2C0%2C10.44%2C12.932Z%22%20style%3D%22fill%3A%230072c6%22%2F%3E%3Cpath%20d%3D%22M2.153%2C5.155V26.582L18.453%2C30V2ZM13.061%2C19.491a3.231%2C3.231%2C0%2C0%2C1-2.7%2C1.361%2C3.19%2C3.19%2C0%2C0%2C1-2.64-1.318A5.459%2C5.459%2C0%2C0%2C1%2C6.706%2C16.1a5.868%2C5.868%2C0%2C0%2C1%2C1.036-3.616A3.267%2C3.267%2C0%2C0%2C1%2C10.486%2C11.1a3.116%2C3.116%2C0%2C0%2C1%2C2.61%2C1.321%2C5.639%2C5.639%2C0%2C0%2C1%2C1%2C3.484A5.763%2C5.763%2C0%2C0%2C1%2C13.061%2C19.491Z%22%20style%3D%22fill%3A%230072c6%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">EML</a>
+    <a class="nav-item" href="https://epub-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20fill%3D%22%2386b918%22%20d%3D%22M16%2024.8%207.2%2016%2016%207.2l2.93%202.93L13.07%2016%2016%2018.93l8.8-8.8-7.67-7.66a1.6%201.6%200%200%200-2.26%200l-12.4%2012.4a1.6%201.6%200%200%200%200%202.26l12.4%2012.4a1.6%201.6%200%200%200%202.26%200l12.4-12.4a1.6%201.6%200%200%200%200-2.26l-1.8-1.8z%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">ePUB</a>
+    <a class="nav-item" href="https://html-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ctitle%3Efile_type_html%3C%2Ftitle%3E%3Cpolygon%20points%3D%225.902%2027.201%203.655%202%2028.345%202%2026.095%2027.197%2015.985%2030%205.902%2027.201%22%20style%3D%22fill%3A%23e44f26%22%2F%3E%3Cpolygon%20points%3D%2216%2027.858%2024.17%2025.593%2026.092%204.061%2016%204.061%2016%2027.858%22%20style%3D%22fill%3A%23f1662a%22%2F%3E%3Cpolygon%20points%3D%2216%2013.407%2011.91%2013.407%2011.628%2010.242%2016%2010.242%2016%207.151%2015.989%207.151%208.25%207.151%208.324%207.981%209.083%2016.498%2016%2016.498%2016%2013.407%22%20style%3D%22fill%3A%23ebebeb%22%2F%3E%3Cpolygon%20points%3D%2216%2021.434%2015.986%2021.438%2012.544%2020.509%2012.324%2018.044%2010.651%2018.044%209.221%2018.044%209.654%2022.896%2015.986%2024.654%2016%2024.65%2016%2021.434%22%20style%3D%22fill%3A%23ebebeb%22%2F%3E%3Cpolygon%20points%3D%2215.989%2013.407%2015.989%2016.498%2019.795%2016.498%2019.437%2020.507%2015.989%2021.437%2015.989%2024.653%2022.326%2022.896%2022.372%2022.374%2023.098%2014.237%2023.174%2013.407%2022.341%2013.407%2015.989%2013.407%22%20style%3D%22fill%3A%23fff%22%2F%3E%3Cpolygon%20points%3D%2215.989%207.151%2015.989%209.071%2015.989%2010.235%2015.989%2010.242%2023.445%2010.242%2023.445%2010.242%2023.455%2010.242%2023.517%209.548%2023.658%207.981%2023.732%207.151%2015.989%207.151%22%20style%3D%22fill%3A%23fff%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">HTML</a>
+    <a class="nav-item" href="https://image-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20x%3D%223%22%20y%3D%225.5%22%20width%3D%2226%22%20height%3D%2221%22%20rx%3D%223.5%22%20fill%3D%22%234f46e5%22%2F%3E%3Ccircle%20cx%3D%2210.5%22%20cy%3D%2212%22%20r%3D%222.7%22%20fill%3D%22%23fbbf24%22%2F%3E%3Cpath%20d%3D%22M5%2024l6.2-7.6%204.3%204.7L20%2013l7%2011z%22%20fill%3D%22%23fff%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">Image</a>
+    <a class="nav-item" href="https://log-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2226%22%20height%3D%2222%22%20rx%3D%223.5%22%20fill%3D%22%23334155%22%2F%3E%3Cpath%20d%3D%22M8.5%2012.5l4%203.5-4%203.5%22%20fill%3D%22none%22%20stroke%3D%22%234ade80%22%20stroke-width%3D%222.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cline%20x1%3D%2215.5%22%20y1%3D%2220%22%20x2%3D%2223%22%20y2%3D%2220%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222.2%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">Log</a>
+    <a class="nav-item" href="https://markdown-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20x%3D%222.5%22%20y%3D%227.955%22%20width%3D%2227%22%20height%3D%2216.091%22%20style%3D%22fill%3Anone%3Bstroke%3A%23755838%22%2F%3E%3Cpolygon%20points%3D%225.909%2020.636%205.909%2011.364%208.636%2011.364%2011.364%2014.773%2014.091%2011.364%2016.818%2011.364%2016.818%2020.636%2014.091%2020.636%2014.091%2015.318%2011.364%2018.727%208.636%2015.318%208.636%2020.636%205.909%2020.636%22%20style%3D%22fill%3A%23755838%22%2F%3E%3Cpolygon%20points%3D%2222.955%2020.636%2018.864%2016.136%2021.591%2016.136%2021.591%2011.364%2024.318%2011.364%2024.318%2016.136%2027.045%2016.136%2022.955%2020.636%22%20style%3D%22fill%3A%23755838%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">Markdown</a>
+    <a class="nav-item" href="https://pdf-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cpath%20d%3D%22M24.1%2C2.072h0l5.564%2C5.8V29.928H8.879V30H29.735V7.945L24.1%2C2.072%22%20style%3D%22fill%3A%23909090%22%2F%3E%3Cpath%20d%3D%22M24.031%2C2H8.808V29.928H29.664V7.873L24.03%2C2%22%20style%3D%22fill%3A%23f4f4f4%22%2F%3E%3Cpath%20d%3D%22M8.655%2C3.5H2.265v6.827h20.1V3.5H8.655%22%20style%3D%22fill%3A%237a7b7c%22%2F%3E%3Cpath%20d%3D%22M22.472%2C10.211H2.395V3.379H22.472v6.832%22%20style%3D%22fill%3A%23dd2025%22%2F%3E%3Cpath%20d%3D%22M9.052%2C4.534h-.03l-.207%2C0H7.745v4.8H8.773V7.715L9%2C7.728a2.042%2C2.042%2C0%2C0%2C0%2C.647-.117%2C1.427%2C1.427%2C0%2C0%2C0%2C.493-.291%2C1.224%2C1.224%2C0%2C0%2C0%2C.335-.454%2C2.13%2C2.13%2C0%2C0%2C0%2C.105-.908%2C2.237%2C2.237%2C0%2C0%2C0-.114-.644%2C1.173%2C1.173%2C0%2C0%2C0-.687-.65A2.149%2C2.149%2C0%2C0%2C0%2C9.37%2C4.56a2.232%2C2.232%2C0%2C0%2C0-.319-.026M8.862%2C6.828l-.089%2C0V5.348h.193a.57.57%2C0%2C0%2C1%2C.459.181.92.92%2C0%2C0%2C1%2C.183.558c0%2C.246%2C0%2C.469-.222.626a.942.942%2C0%2C0%2C1-.524.114%22%20style%3D%22fill%3A%23464648%22%2F%3E%3Cpath%20d%3D%22M12.533%2C4.521c-.111%2C0-.219.008-.295.011L12%2C4.538h-.78v4.8h.918a2.677%2C2.677%2C0%2C0%2C0%2C1.028-.175%2C1.71%2C1.71%2C0%2C0%2C0%2C.68-.491%2C1.939%2C1.939%2C0%2C0%2C0%2C.373-.749%2C3.728%2C3.728%2C0%2C0%2C0%2C.114-.949%2C4.416%2C4.416%2C0%2C0%2C0-.087-1.127%2C1.777%2C1.777%2C0%2C0%2C0-.4-.733%2C1.63%2C1.63%2C0%2C0%2C0-.535-.4%2C2.413%2C2.413%2C0%2C0%2C0-.549-.178%2C1.282%2C1.282%2C0%2C0%2C0-.228-.017m-.182%2C3.937-.1%2C0V5.392h.013a1.062%2C1.062%2C0%2C0%2C1%2C.6.107%2C1.2%2C1.2%2C0%2C0%2C1%2C.324.4%2C1.3%2C1.3%2C0%2C0%2C1%2C.142.526c.009.22%2C0%2C.4%2C0%2C.549a2.926%2C2.926%2C0%2C0%2C1-.033.513%2C1.756%2C1.756%2C0%2C0%2C1-.169.5%2C1.13%2C1.13%2C0%2C0%2C1-.363.36.673.673%2C0%2C0%2C1-.416.106%22%20style%3D%22fill%3A%23464648%22%2F%3E%3Cpath%20d%3D%22M17.43%2C4.538H15v4.8h1.028V7.434h1.3V6.542h-1.3V5.43h1.4V4.538%22%20style%3D%22fill%3A%23464648%22%2F%3E%3Cpath%20d%3D%22M21.781%2C20.255s3.188-.578%2C3.188.511S22.994%2C21.412%2C21.781%2C20.255Zm-2.357.083a7.543%2C7.543%2C0%2C0%2C0-1.473.489l.4-.9c.4-.9.815-2.127.815-2.127a14.216%2C14.216%2C0%2C0%2C0%2C1.658%2C2.252%2C13.033%2C13.033%2C0%2C0%2C0-1.4.288Zm-1.262-6.5c0-.949.307-1.208.546-1.208s.508.115.517.939a10.787%2C10.787%2C0%2C0%2C1-.517%2C2.434A4.426%2C4.426%2C0%2C0%2C1%2C18.161%2C13.841ZM13.513%2C24.354c-.978-.585%2C2.051-2.386%2C2.6-2.444C16.11%2C21.911%2C14.537%2C24.966%2C13.513%2C24.354ZM25.9%2C20.895c-.01-.1-.1-1.207-2.07-1.16a14.228%2C14.228%2C0%2C0%2C0-2.453.173%2C12.542%2C12.542%2C0%2C0%2C1-2.012-2.655%2C11.76%2C11.76%2C0%2C0%2C0%2C.623-3.1c-.029-1.2-.316-1.888-1.236-1.878s-1.054.815-.933%2C2.013a9.309%2C9.309%2C0%2C0%2C0%2C.665%2C2.338s-.425%2C1.323-.987%2C2.639-.946%2C2.006-.946%2C2.006a9.622%2C9.622%2C0%2C0%2C0-2.725%2C1.4c-.824.767-1.159%2C1.356-.725%2C1.945.374.508%2C1.683.623%2C2.853-.91a22.549%2C22.549%2C0%2C0%2C0%2C1.7-2.492s1.784-.489%2C2.339-.623%2C1.226-.24%2C1.226-.24%2C1.629%2C1.639%2C3.2%2C1.581%2C1.495-.939%2C1.485-1.035%22%20style%3D%22fill%3A%23dd2025%22%2F%3E%3Cpath%20d%3D%22M23.954%2C2.077V7.95h5.633L23.954%2C2.077Z%22%20style%3D%22fill%3A%23909090%22%2F%3E%3Cpath%20d%3D%22M24.031%2C2V7.873h5.633L24.031%2C2Z%22%20style%3D%22fill%3A%23f4f4f4%22%2F%3E%3Cpath%20d%3D%22M8.975%2C4.457h-.03l-.207%2C0H7.668v4.8H8.7V7.639l.228.013a2.042%2C2.042%2C0%2C0%2C0%2C.647-.117%2C1.428%2C1.428%2C0%2C0%2C0%2C.493-.291A1.224%2C1.224%2C0%2C0%2C0%2C10.4%2C6.79a2.13%2C2.13%2C0%2C0%2C0%2C.105-.908%2C2.237%2C2.237%2C0%2C0%2C0-.114-.644%2C1.173%2C1.173%2C0%2C0%2C0-.687-.65%2C2.149%2C2.149%2C0%2C0%2C0-.411-.105%2C2.232%2C2.232%2C0%2C0%2C0-.319-.026M8.785%2C6.751l-.089%2C0V5.271H8.89a.57.57%2C0%2C0%2C1%2C.459.181.92.92%2C0%2C0%2C1%2C.183.558c0%2C.246%2C0%2C.469-.222.626a.942.942%2C0%2C0%2C1-.524.114%22%20style%3D%22fill%3A%23fff%22%2F%3E%3Cpath%20d%3D%22M12.456%2C4.444c-.111%2C0-.219.008-.295.011l-.235.006h-.78v4.8h.918a2.677%2C2.677%2C0%2C0%2C0%2C1.028-.175%2C1.71%2C1.71%2C0%2C0%2C0%2C.68-.491%2C1.939%2C1.939%2C0%2C0%2C0%2C.373-.749%2C3.728%2C3.728%2C0%2C0%2C0%2C.114-.949%2C4.416%2C4.416%2C0%2C0%2C0-.087-1.127%2C1.777%2C1.777%2C0%2C0%2C0-.4-.733%2C1.63%2C1.63%2C0%2C0%2C0-.535-.4%2C2.413%2C2.413%2C0%2C0%2C0-.549-.178%2C1.282%2C1.282%2C0%2C0%2C0-.228-.017m-.182%2C3.937-.1%2C0V5.315h.013a1.062%2C1.062%2C0%2C0%2C1%2C.6.107%2C1.2%2C1.2%2C0%2C0%2C1%2C.324.4%2C1.3%2C1.3%2C0%2C0%2C1%2C.142.526c.009.22%2C0%2C.4%2C0%2C.549a2.926%2C2.926%2C0%2C0%2C1-.033.513%2C1.756%2C1.756%2C0%2C0%2C1-.169.5%2C1.13%2C1.13%2C0%2C0%2C1-.363.36.673.673%2C0%2C0%2C1-.416.106%22%20style%3D%22fill%3A%23fff%22%2F%3E%3Cpath%20d%3D%22M17.353%2C4.461h-2.43v4.8h1.028V7.357h1.3V6.465h-1.3V5.353h1.4V4.461%22%20style%3D%22fill%3A%23fff%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">PDF</a>
+    <a class="nav-item" href="https://pptx-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22a%22%20x1%3D%224.494%22%20y1%3D%22-1748.086%22%20x2%3D%2213.832%22%20y2%3D%22-1731.914%22%20gradientTransform%3D%22translate%280%201756%29%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23ca4c28%22%2F%3E%3Cstop%20offset%3D%220.5%22%20stop-color%3D%22%23c5401e%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23b62f14%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ctitle%3Efile_type_powerpoint%3C%2Ftitle%3E%3Cpath%20d%3D%22M18.93%2C17.3%2C16.977%2C3h-.146A12.9%2C12.9%2C0%2C0%2C0%2C3.953%2C15.854V16Z%22%20style%3D%22fill%3A%23ed6c47%22%2F%3E%3Cpath%20d%3D%22M17.123%2C3h-.146V16l6.511%2C2.6L30%2C16v-.146A12.9%2C12.9%2C0%2C0%2C0%2C17.123%2C3Z%22%20style%3D%22fill%3A%23ff8f6b%22%2F%3E%3Cpath%20d%3D%22M30%2C16v.143A12.905%2C12.905%2C0%2C0%2C1%2C17.12%2C29h-.287A12.907%2C12.907%2C0%2C0%2C1%2C3.953%2C16.143V16Z%22%20style%3D%22fill%3A%23d35230%22%2F%3E%3Cpath%20d%3D%22M17.628%2C9.389V23.26a1.2%2C1.2%2C0%2C0%2C1-.742%2C1.1%2C1.16%2C1.16%2C0%2C0%2C1-.45.091H7.027c-.182-.208-.358-.429-.521-.65a12.735%2C12.735%2C0%2C0%2C1-2.553-7.657v-.286A12.705%2C12.705%2C0%2C0%2C1%2C6.05%2C8.85c.143-.221.293-.442.456-.65h9.93A1.2%2C1.2%2C0%2C0%2C1%2C17.628%2C9.389Z%22%20style%3D%22opacity%3A0.10000000149011612%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M16.977%2C10.04V23.911a1.15%2C1.15%2C0%2C0%2C1-.091.448%2C1.2%2C1.2%2C0%2C0%2C1-1.1.741H7.62q-.309-.314-.593-.65c-.182-.208-.358-.429-.521-.65a12.735%2C12.735%2C0%2C0%2C1-2.553-7.657v-.286A12.705%2C12.705%2C0%2C0%2C1%2C6.05%2C8.85h9.735A1.2%2C1.2%2C0%2C0%2C1%2C16.977%2C10.04Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M16.977%2C10.04V22.611A1.2%2C1.2%2C0%2C0%2C1%2C15.785%2C23.8H6.506a12.735%2C12.735%2C0%2C0%2C1-2.553-7.657v-.286A12.705%2C12.705%2C0%2C0%2C1%2C6.05%2C8.85h9.735A1.2%2C1.2%2C0%2C0%2C1%2C16.977%2C10.04Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M16.326%2C10.04V22.611A1.2%2C1.2%2C0%2C0%2C1%2C15.134%2C23.8H6.506a12.735%2C12.735%2C0%2C0%2C1-2.553-7.657v-.286A12.705%2C12.705%2C0%2C0%2C1%2C6.05%2C8.85h9.084A1.2%2C1.2%2C0%2C0%2C1%2C16.326%2C10.04Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M3.194%2C8.85H15.132a1.193%2C1.193%2C0%2C0%2C1%2C1.194%2C1.191V21.959a1.193%2C1.193%2C0%2C0%2C1-1.194%2C1.191H3.194A1.192%2C1.192%2C0%2C0%2C1%2C2%2C21.959V10.041A1.192%2C1.192%2C0%2C0%2C1%2C3.194%2C8.85Z%22%20style%3D%22fill%3Aurl%28%23a%29%22%2F%3E%3Cpath%20d%3D%22M9.293%2C12.028a3.287%2C3.287%2C0%2C0%2C1%2C2.174.636%2C2.27%2C2.27%2C0%2C0%2C1%2C.756%2C1.841%2C2.555%2C2.555%2C0%2C0%2C1-.373%2C1.376%2C2.49%2C2.49%2C0%2C0%2C1-1.059.935A3.607%2C3.607%2C0%2C0%2C1%2C9.2%2C17.15H7.687v2.8H6.141V12.028ZM7.686%2C15.94H9.017a1.735%2C1.735%2C0%2C0%2C0%2C1.177-.351%2C1.3%2C1.3%2C0%2C0%2C0%2C.4-1.025q0-1.309-1.525-1.31H7.686V15.94Z%22%20style%3D%22fill%3A%23fff%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">PPTX</a>
+    <a class="nav-item" href="https://pub-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Ctitle%3Efile_type_publisher%3C%2Ftitle%3E%3Cpath%20d%3D%22M16.484%2C2.475h1.868V8.136h2.214c.088-1.123-.418-2.906%2C1-3.366%2C1.956-.23%2C3.941-.022%2C5.91-.1.777.069%2C1.771-.189%2C2.356.475A4.665%2C4.665%2C0%2C0%2C1%2C30%2C6.561c-.009%2C4.3-.016%2C8.6%2C0%2C12.893a5.5%2C5.5%2C0%2C0%2C1-.2%2C1.711%2C10.365%2C10.365%2C0%2C0%2C1-2.96.186%2C35.2%2C35.2%2C0%2C0%2C1-.1%2C4.312c-.267.736-1.142.7-1.78.72-2.2.006-4.407-.009-6.612%2C0v3.145H16.405c-4.8-.871-9.6-1.673-14.4-2.516Q2%2C16%2C2%2C4.994C6.827%2C4.154%2C11.659%2C3.327%2C16.484%2C2.475Z%22%20style%3D%22fill%3A%23077467%22%2F%3E%3Cpath%20d%3D%22M22.089%2C5.714c2.312-.2%2C4.64-.044%2C6.958-.094V20.089h-2.2c-.006-3.781.009-7.559-.006-11.339C25.36%2C7.58%2C23.376%2C7.092%2C22.089%2C5.714Z%22%20style%3D%22fill%3A%23fff%22%2F%3E%3Cpath%20d%3D%22M18.352%2C9.08h7.235V25.436H18.352q0-.944%2C0-1.887H23.7c0-.418%2C0-.84%2C0-1.258H18.352c0-.525%2C0-1.047%2C0-1.573H23.7c0-.418%2C0-.84%2C0-1.258H18.352c0-.525%2C0-1.047%2C0-1.573H23.7c0-.418%2C0-.84%2C0-1.258H18.352c0-.525%2C0-1.047%2C0-1.573H23.7v-4.4H18.352C18.349%2C10.127%2C18.349%2C9.605%2C18.352%2C9.08Z%22%20style%3D%22fill%3A%23fff%22%2F%3E%3Cpath%20d%3D%22M7.029%2C10.8c1.714.053%2C3.8-.692%2C5.218.594%2C1.349%2C1.651.988%2C4.665-1.022%2C5.649a4.566%2C4.566%2C0%2C0%2C1-2.306.286c0%2C1.233-.006%2C2.466%2C0%2C3.7-.635-.063-1.271-.126-1.9-.2C7.045%2C17.491%2C7.016%2C14.147%2C7.029%2C10.8Z%22%20style%3D%22fill%3A%23fff%22%2F%3E%3Cpath%20d%3D%22M8.916%2C12.49c.623-.035%2C1.4-.148%2C1.818.453a2.315%2C2.315%2C0%2C0%2C1%2C.028%2C2.051c-.365.645-1.17.582-1.8.654C8.9%2C14.6%2C8.91%2C13.543%2C8.916%2C12.49Z%22%20style%3D%22fill%3A%23077467%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">PUB</a>
+    <a class="nav-item" href="https://sheets-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22a%22%20x1%3D%224.494%22%20y1%3D%22-2092.086%22%20x2%3D%2213.832%22%20y2%3D%22-2075.914%22%20gradientTransform%3D%22translate%280%202100%29%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%2318884f%22%2F%3E%3Cstop%20offset%3D%220.5%22%20stop-color%3D%22%23117e43%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230b6631%22%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ctitle%3Efile_type_excel%3C%2Ftitle%3E%3Cpath%20d%3D%22M19.581%2C15.35%2C8.512%2C13.4V27.809A1.192%2C1.192%2C0%2C0%2C0%2C9.705%2C29h19.1A1.192%2C1.192%2C0%2C0%2C0%2C30%2C27.809h0V22.5Z%22%20style%3D%22fill%3A%23185c37%22%2F%3E%3Cpath%20d%3D%22M19.581%2C3H9.705A1.192%2C1.192%2C0%2C0%2C0%2C8.512%2C4.191h0V9.5L19.581%2C16l5.861%2C1.95L30%2C16V9.5Z%22%20style%3D%22fill%3A%2321a366%22%2F%3E%3Cpath%20d%3D%22M8.512%2C9.5H19.581V16H8.512Z%22%20style%3D%22fill%3A%23107c41%22%2F%3E%3Cpath%20d%3D%22M16.434%2C8.2H8.512V24.45h7.922a1.2%2C1.2%2C0%2C0%2C0%2C1.194-1.191V9.391A1.2%2C1.2%2C0%2C0%2C0%2C16.434%2C8.2Z%22%20style%3D%22opacity%3A0.10000000149011612%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M15.783%2C8.85H8.512V25.1h7.271a1.2%2C1.2%2C0%2C0%2C0%2C1.194-1.191V10.041A1.2%2C1.2%2C0%2C0%2C0%2C15.783%2C8.85Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M15.783%2C8.85H8.512V23.8h7.271a1.2%2C1.2%2C0%2C0%2C0%2C1.194-1.191V10.041A1.2%2C1.2%2C0%2C0%2C0%2C15.783%2C8.85Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M15.132%2C8.85H8.512V23.8h6.62a1.2%2C1.2%2C0%2C0%2C0%2C1.194-1.191V10.041A1.2%2C1.2%2C0%2C0%2C0%2C15.132%2C8.85Z%22%20style%3D%22opacity%3A0.20000000298023224%3Bisolation%3Aisolate%22%2F%3E%3Cpath%20d%3D%22M3.194%2C8.85H15.132a1.193%2C1.193%2C0%2C0%2C1%2C1.194%2C1.191V21.959a1.193%2C1.193%2C0%2C0%2C1-1.194%2C1.191H3.194A1.192%2C1.192%2C0%2C0%2C1%2C2%2C21.959V10.041A1.192%2C1.192%2C0%2C0%2C1%2C3.194%2C8.85Z%22%20style%3D%22fill%3Aurl%28%23a%29%22%2F%3E%3Cpath%20d%3D%22M5.7%2C19.873l2.511-3.884-2.3-3.862H7.758L9.013%2C14.6c.116.234.2.408.238.524h.017c.082-.188.169-.369.26-.546l1.342-2.447h1.7l-2.359%2C3.84%2C2.419%2C3.905H10.821l-1.45-2.711A2.355%2C2.355%2C0%2C0%2C1%2C9.2%2C16.8H9.176a1.688%2C1.688%2C0%2C0%2C1-.168.351L7.515%2C19.873Z%22%20style%3D%22fill%3A%23fff%22%2F%3E%3Cpath%20d%3D%22M28.806%2C3H19.581V9.5H30V4.191A1.192%2C1.192%2C0%2C0%2C0%2C28.806%2C3Z%22%20style%3D%22fill%3A%2333c481%22%2F%3E%3Cpath%20d%3D%22M19.581%2C16H30v6.5H19.581Z%22%20style%3D%22fill%3A%23107c41%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">Sheets</a>
+    <a class="nav-item" href="https://video-viewer.us/"><img class="nav-ico" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20x%3D%223%22%20y%3D%226%22%20width%3D%2226%22%20height%3D%2220%22%20rx%3D%224%22%20fill%3D%22%238b5cf6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%229%22%20width%3D%223%22%20height%3D%223%22%20rx%3D%221%22%20fill%3D%22%23fff%22%20opacity%3D%22.85%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%2214.5%22%20width%3D%223%22%20height%3D%223%22%20rx%3D%221%22%20fill%3D%22%23fff%22%20opacity%3D%22.85%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%2220%22%20width%3D%223%22%20height%3D%223%22%20rx%3D%221%22%20fill%3D%22%23fff%22%20opacity%3D%22.85%22%2F%3E%3Cpath%20d%3D%22M14%2011.5v9l8.5-4.5z%22%20fill%3D%22%23fff%22%2F%3E%3C%2Fsvg%3E" alt="" aria-hidden="true">Video</a>
+  </nav>
+</aside>
+
+<div id="dropOverlay" class="drop-overlay" aria-hidden="true">
+  <div class="drop-card">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    <span>Drop to play</span>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- Family router offer card (§6.10) -->
+<div class="route-backdrop" id="routeBackdrop" hidden></div>
+<div class="route-card" id="routeCard" role="alertdialog" aria-modal="true" aria-labelledby="routeMsg" aria-describedby="routeSub" hidden>
+  <p id="routeMsg"></p>
+  <p class="route-sub" id="routeSub" aria-live="polite">Your file stays on this device — nothing is uploaded.</p>
+  <div class="route-actions">
+    <button type="button" class="route-go" id="routeGo"></button>
+    <button type="button" class="route-dismiss" id="routeDismiss">Not now</button>
+  </div>
+</div>
+
+<input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.oga,.opus,.weba,.mka,.aif,.aiff,.wma,.mid,.midi" hidden>
+
+<script>
+(function(){
+  "use strict";
+  var doc = document, root = doc.documentElement, body = doc.body;
+  function id(x){ return doc.getElementById(x); }
+
+  var empty         = id("empty");
+  var playerView    = id("playerView");
+  var playerCard    = id("playerCard");
+  var coverArt      = id("coverArt");
+  var coverFallback = id("coverFallback");
+  var trackTitle    = id("trackTitle");
+  var trackArtist   = id("trackArtist");
+  var trackAlbum    = id("trackAlbum");
+  var wave          = id("wave");
+  var audioMount    = id("audioMount");
+  var metaLine      = id("metaLine");
+  var noticeEl      = id("audioNotice");
+  var fileInput     = id("fileInput");
+  var overlay       = id("dropOverlay");
+  var toastEl       = id("toast");
+  var docTitle      = id("docTitle");
+  var hoverZone     = id("hoverZone");
+  var bgPicker      = id("bgPicker");
+  var themeColor    = id("themeColor");
+  var footerEl      = id("footer");
+  var topbar        = doc.querySelector(".topbar");
+  var brandIcon     = id("brandIcon");
+
+  // Reuse the favicon (single source of truth) for the header brand icon.
+  var favLink = doc.querySelector('link[rel="icon"]');
+  if (brandIcon && favLink) brandIcon.src = favLink.href;
+
+  var BASE_TITLE = "Audio Viewer";
+  var MAX_WAVE_BYTES = 50 * 1024 * 1024;   // skip the waveform decode past ~50 MB
+  var MAX_TAG_BYTES  = 20 * 1024 * 1024;   // sanity cap for an ID3v2 tag
+  var MAX_ART_BYTES  = 10 * 1024 * 1024;   // sanity cap for embedded cover art
+
+  var currentFile = null;
+  var currentName = "";
+  var audioEl = null;          // the mounted <audio> (rebuilt per file so listeners stay fresh)
+  var objectUrl = null;        // playback object URL — revoked on drop-to-replace and on Clear
+  var audioCtx = null;         // lazy AudioContext for waveform peaks
+  var loadSeq = 0;             // guards async tag/waveform work against a newer load
+  var wavePeaks = null;
+  var tagInfo = null;
+  var mode = "player";         // rendered plane only (binary viewer — no source plane)
+  var toastTimer = null;
+
+  // Accepted audio types. .wma/.mid/.midi are accepted-with-notice: browsers ship
+  // no native decoder (or synthesizer) for them, so they get an honest card
+  // instead of a broken player. Everything else plays via the native element.
+  var ACCEPT_EXT = {
+    mp3:1, wav:1, flac:1, m4a:1, aac:1, ogg:1, oga:1, opus:1,
+    weba:1, mka:1, aif:1, aiff:1, wma:1, mid:1, midi:1
+  };
+  var ACCEPT_NAME = {};
+  var NOTICE_EXT = { wma:1, mid:1, midi:1 };
+  var FMT_LABEL = {
+    mp3:"MP3", wav:"WAV", flac:"FLAC", m4a:"M4A (AAC)", aac:"AAC",
+    ogg:"OGG", oga:"OGG (Vorbis)", opus:"Opus", weba:"WebM audio", mka:"Matroska audio",
+    aif:"AIFF", aiff:"AIFF", wma:"Windows Media Audio", mid:"MIDI", midi:"MIDI"
+  };
+
+  function extOf(name){ var m = /\.([a-z0-9_]+)$/i.exec(name || ""); return m ? m[1].toLowerCase() : ""; }
+  function isAccepted(name){
+    if (!name) return false;
+    var base = String(name).toLowerCase().split("/").pop().split("\\").pop();
+    return ACCEPT_NAME[base] === 1 || ACCEPT_EXT[extOf(base)] === 1;
+  }
+  function baseName(name){
+    var b = String(name || "").split("/").pop().split("\\").pop();
+    var stem = b.replace(/\.[a-z0-9_]+$/i, "");
+    return stem || b;
+  }
+
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1900);
+  }
+
+  function fmtBytes(n){
+    if (!(n >= 0)) return "";
+    if (n < 1024) return n + " B";
+    if (n < 1048576) return (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB";
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + " MB";
+    return (n / 1073741824).toFixed(2) + " GB";
+  }
+  function fmtTime(t){
+    if (!isFinite(t) || t < 0) return "";
+    var s = Math.round(t), m = Math.floor(s / 60); s -= m * 60;
+    var h = Math.floor(m / 60); m -= h * 60;
+    return (h ? h + ":" + (m < 10 ? "0" : "") + m : String(m)) + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function updateMeta(dur){
+    var parts = [];
+    if (dur) parts.push(fmtTime(dur));
+    var ext = extOf(currentName);
+    parts.push(FMT_LABEL[ext] || (ext ? "." + ext : "Audio"));
+    if (currentFile) parts.push(fmtBytes(currentFile.size));
+    metaLine.textContent = parts.join(" · ");
+  }
+
+  // ---------- Player lifecycle ----------
+  function teardownAudio(){
+    if (audioEl){
+      try { audioEl.pause(); } catch (e){}
+      audioEl.removeAttribute("src");
+      try { audioEl.load(); } catch (e){}
+      if (audioEl.parentNode) audioEl.parentNode.removeChild(audioEl);
+      audioEl = null;
+    }
+    if (objectUrl){ URL.revokeObjectURL(objectUrl); objectUrl = null; }
+  }
+  function resetPlayerUi(){
+    coverArt.hidden = true; coverArt.removeAttribute("src");
+    coverFallback.hidden = false;
+    trackArtist.hidden = true; trackArtist.textContent = "";
+    trackAlbum.hidden = true; trackAlbum.textContent = "";
+    wave.hidden = true; wavePeaks = null;
+    var g = wave.getContext && wave.getContext("2d");
+    if (g) g.clearRect(0, 0, wave.width, wave.height);
+    noticeEl.hidden = true; noticeEl.textContent = "";
+    metaLine.textContent = "";
+  }
+
+  function showAudio(file){
+    var seq = ++loadSeq;
+    teardownAudio();          // revokes the previous object URL (drop-to-replace)
+    resetPlayerUi();
+    currentFile = file; currentName = file.name || ""; tagInfo = null;
+
+    empty.hidden = true;
+    playerView.hidden = false;
+    docTitle.textContent = currentName || BASE_TITLE;
+    doc.title = currentName ? currentName + " — " + BASE_TITLE : BASE_TITLE;
+    body.classList.add("viewing");
+    revealHeader();           // rendered plane: header shows, then collapses to the handle after 3 s
+    window.scrollTo(0, 0);
+    playerView.scrollTop = 0;
+
+    var ext = extOf(currentName);
+    trackTitle.textContent = baseName(currentName);   // tag title replaces this if present
+    updateMeta(0);
+
+    if (NOTICE_EXT[ext]){     // accept-with-notice: no native decoder — honest card, no player
+      playerCard.hidden = true;
+      showNotice(noticeCopy(ext));
+      return;
+    }
+
+    playerCard.hidden = false;
+
+    // Mount a fresh <audio controls> on an object URL. Playback never touches
+    // FileReader — the browser streams straight from the File on disk.
+    objectUrl = URL.createObjectURL(file);
+    audioEl = doc.createElement("audio");
+    audioEl.controls = true;
+    audioEl.preload = "metadata";
+    audioEl.setAttribute("aria-label", "Audio player");
+    audioEl.addEventListener("loadedmetadata", function(){
+      if (seq !== loadSeq) return;
+      updateMeta(audioEl.duration);
+    });
+    audioEl.addEventListener("error", function(){ if (seq === loadSeq) codecHint(ext); });
+    audioEl.addEventListener("stalled", function(){
+      if (seq === loadSeq && audioEl && !(audioEl.duration > 0)) codecHint(ext);
+    });
+    audioEl.src = objectUrl;
+    audioMount.appendChild(audioEl);
+
+    readTags(file, seq);      // ID3v2.3/v2.4: title, artist, album, year, cover art
+    buildWave(file, seq);     // Web Audio peaks (silently skipped >50 MB or if decode fails)
+  }
+
+  function clearAll(){
+    loadSeq++;
+    teardownAudio();          // revokes the object URL
+    resetPlayerUi();
+    currentFile = null; currentName = ""; tagInfo = null;
+    trackTitle.textContent = "";
+    playerView.hidden = true; playerCard.hidden = true;
+    empty.hidden = false;
+    docTitle.textContent = BASE_TITLE;
+    doc.title = BASE_TITLE;
+    body.classList.remove("viewing", "hdr-hidden");
+    clearTimeout(hdrIdleTimer);
+  }
+
+  function readFile(file){
+    if (!file) return;
+    if (!isAccepted(file.name)){
+      if (!familyRoute(file)) toast("“" + file.name + "” isn’t a supported audio file");
+      return;
+    }
+    showAudio(file);
+  }
+
+  // ---------- Notice / codec-hint cards (textContent-only sinks) ----------
+  function showNotice(copy){
+    noticeEl.textContent = "";
+    var h = doc.createElement("div"); h.className = "audio-notice-title"; h.textContent = copy.title;
+    var p = doc.createElement("p"); p.textContent = copy.body;
+    var q = doc.createElement("p"); q.className = "audio-notice-sub"; q.textContent = "Your file was not uploaded anywhere.";
+    noticeEl.appendChild(h); noticeEl.appendChild(p); noticeEl.appendChild(q);
+    noticeEl.hidden = false;
+  }
+  function noticeCopy(ext){
+    if (ext === "mid" || ext === "midi") return {
+      title: "Can’t play a “." + ext + "” file",
+      body: "MIDI files are musical scores, not recorded audio — browsers don’t ship a synthesizer for them. Render it to audio in a DAW or player (GarageBand, VLC, TiMidity++) and save it as .mp3 or .wav to play it here."
+    };
+    return {
+      title: "Can’t play a “." + ext + "” file",
+      body: "Windows Media Audio has no in-browser decoder. Convert it to .mp3 or .flac (VLC or ffmpeg does this in seconds) to play it here."
+    };
+  }
+  function codecHint(ext){
+    // Browser-dependent honesty (the image viewer's .heic pattern): the type is
+    // accepted, but this particular browser ships no decoder for it. Never fail silently.
+    wave.hidden = true;
+    if (audioEl) audioEl.hidden = true;
+    showNotice({
+      title: "Can’t play " + (FMT_LABEL[ext] || "“." + ext + "”") + " in this browser",
+      body: "The format is supported by this viewer, but this browser has no decoder for it (codecs vary by browser build). Try Chrome, Edge or Safari — or convert the file to .mp3, .wav, .flac or .ogg."
+    });
+  }
+
+  // ---------- ID3v2 reader (v2.3 + v2.4) — original code, no library ----------
+  // Only the tag bytes at the head of the file are read (FileReader on a slice);
+  // playback itself streams from the object URL.
+  function syncsafe(b, i){ return ((b[i] & 0x7f) << 21) | ((b[i+1] & 0x7f) << 14) | ((b[i+2] & 0x7f) << 7) | (b[i+3] & 0x7f); }
+  function be32(b, i){ return ((b[i] << 24) | (b[i+1] << 16) | (b[i+2] << 8) | b[i+3]) >>> 0; }
+  function latin1(b, s, e){
+    var out = "";
+    for (var i = s; i < e; i++) out += String.fromCharCode(b[i]);
+    return out;
+  }
+  function decodeText(b, s, e, enc){
+    if (e <= s) return "";
+    try {
+      if (window.TextDecoder){
+        if (enc === 3) return new TextDecoder("utf-8").decode(b.subarray(s, e));
+        if (enc === 1){
+          if (e - s >= 2 && b[s] === 0xff && b[s+1] === 0xfe) return new TextDecoder("utf-16le").decode(b.subarray(s + 2, e));
+          if (e - s >= 2 && b[s] === 0xfe && b[s+1] === 0xff) return new TextDecoder("utf-16be").decode(b.subarray(s + 2, e));
+          return new TextDecoder("utf-16le").decode(b.subarray(s, e));
+        }
+        if (enc === 2) return new TextDecoder("utf-16be").decode(b.subarray(s, e));
+      }
+    } catch (err){}
+    return latin1(b, s, e);   // encoding 0 (ISO-8859-1), or no TextDecoder
+  }
+  function cutAtNul(str){ var i = str.indexOf("\u0000"); return i >= 0 ? str.slice(0, i) : str; }
+  function deunsync(b){
+    var out = new Uint8Array(b.length), n = 0;
+    for (var i = 0; i < b.length; i++){
+      out[n++] = b[i];
+      if (b[i] === 0xff && i + 1 < b.length && b[i+1] === 0x00) i++;   // FF 00 -> FF
+    }
+    return out.subarray(0, n);
+  }
+  function b64(bytes){
+    var out = "", chunk = 0x2000;
+    for (var i = 0; i < bytes.length; i += chunk)
+      out += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+    return btoa(out);
+  }
+
+  var TEXT_FRAMES = { TIT2:"title", TPE1:"artist", TALB:"album", TYER:"year", TDRC:"year" };
+
+  function parseId3(u8, major){
+    var tags = {}, pos = 0, len = u8.length;
+    while (pos + 10 <= len){
+      var fid = latin1(u8, pos, pos + 4);
+      if (!/^[A-Z0-9]{4}$/.test(fid)) break;                     // padding / garbage — stop
+      var fsize = major === 4 ? syncsafe(u8, pos + 4) : be32(u8, pos + 4);
+      if (fsize <= 0 || pos + 10 + fsize > len) break;
+      var f2 = u8[pos + 9];
+      var start = pos + 10, end = start + fsize, skip = false;
+      if (major === 4){
+        if (f2 & 0x0c) skip = true;                              // compressed / encrypted frame
+        if (f2 & 0x01) start += 4;                               // data-length indicator
+      } else {
+        if (f2 & 0xc0) skip = true;                              // compressed / encrypted frame
+        if (f2 & 0x20) start += 1;                               // grouping identity byte
+      }
+      if (!skip && start < end){
+        var m = TEXT_FRAMES[fid];
+        var body = u8.subarray(start, end);
+        if (major === 4 && (f2 & 0x02)) body = deunsync(body);   // per-frame unsynchronisation
+        if (m && !tags[m]){
+          var txt = cutAtNul(decodeText(body, 1, body.length, body[0])).replace(/\u0000+$/g, "");
+          txt = txt.replace(/^\s+|\s+$/g, "");
+          if (fid === "TDRC" || fid === "TYER") txt = txt.slice(0, 4);
+          if (txt) tags[m] = txt;
+        } else if (fid === "APIC" && !tags.pictureUri && body.length > 4 && body.length <= MAX_ART_BYTES){
+          var pic = parseApic(body);
+          if (pic) tags.pictureUri = pic;
+        }
+      }
+      pos += 10 + fsize;
+    }
+    return tags;
+  }
+
+  function parseApic(b){
+    var enc = b[0], i = 1;
+    while (i < b.length && b[i] !== 0) i++;                      // MIME type (latin1, NUL-terminated)
+    if (i >= b.length) return null;
+    var mime = latin1(b, 1, i) || "image/jpeg";
+    i += 1;                                                      // the NUL
+    i += 1;                                                      // picture-type byte
+    if (enc === 1 || enc === 2){                                 // UTF-16 description: 00 00, pair-aligned
+      while (i + 1 < b.length && (b[i] !== 0 || b[i+1] !== 0)) i += 2;
+      i += 2;
+    } else {                                                     // latin1 / UTF-8 description
+      while (i < b.length && b[i] !== 0) i++;
+      i += 1;
+    }
+    if (i >= b.length) return null;
+    if (mime.toLowerCase() === "image/jpg") mime = "image/jpeg";
+    if (!/^image\/[a-z0-9.+-]+$/i.test(mime)) return null;       // data: URI stays an image
+    try { return "data:" + mime + ";base64," + b64(b.subarray(i)); }
+    catch (err){ return null; }
+  }
+
+  function readTags(file, seq){
+    var head = new FileReader();
+    head.onload = function(){
+      if (seq !== loadSeq) return;
+      var b = new Uint8Array(head.result || new ArrayBuffer(0));
+      if (b.length < 10 || b[0] !== 0x49 || b[1] !== 0x44 || b[2] !== 0x33) return;   // no ID3v2 tag
+      var major = b[3], flags = b[5];
+      if (major !== 3 && major !== 4) return;                    // v2.3 / v2.4 only
+      if (flags & 0x80) return;                                  // whole-tag unsynchronisation — bail honestly
+      var size = syncsafe(b, 6);
+      if (!size || size > MAX_TAG_BYTES) return;
+      var rest = new FileReader();
+      rest.onload = function(){
+        if (seq !== loadSeq) return;
+        var u8 = new Uint8Array(rest.result || new ArrayBuffer(0));
+        var off = 0;
+        if (flags & 0x40){                                       // extended header
+          off = major === 4 ? syncsafe(u8, 0) : 4 + be32(u8, 0); // v2.4 size includes itself; v2.3 excludes
+          if (!(off > 0) || off >= u8.length) off = 0;
+        }
+        applyTags(parseId3(u8.subarray(off), major));
+      };
+      rest.readAsArrayBuffer(file.slice(10, 10 + size));
+    };
+    head.readAsArrayBuffer(file.slice(0, 10));
+  }
+
+  function applyTags(tags){
+    tagInfo = tags || {};
+    // Tag text is untrusted input — every sink below is textContent.
+    if (tags.title) trackTitle.textContent = tags.title;
+    if (tags.artist){ trackArtist.textContent = tags.artist; trackArtist.hidden = false; }
+    var albumLine = tags.album ? tags.album + (tags.year ? " · " + tags.year : "") : (tags.year || "");
+    if (albumLine){ trackAlbum.textContent = albumLine; trackAlbum.hidden = false; }
+    if (tags.pictureUri){
+      coverArt.src = tags.pictureUri;                            // data: URI (CSP: img-src data:)
+      coverArt.hidden = false;
+      coverFallback.hidden = true;
+    }
+  }
+
+  // ---------- Waveform (Web Audio peaks on a copy of the bytes) ----------
+  function buildWave(file, seq){
+    if (file.size > MAX_WAVE_BYTES) return;                      // skip silently for huge files
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC || !file.arrayBuffer) return;
+    file.arrayBuffer().then(function(buf){
+      if (seq !== loadSeq) return;
+      try { if (!audioCtx) audioCtx = new AC(); } catch (err){ return; }
+      var p = audioCtx.decodeAudioData(buf, function(ab){
+        if (seq !== loadSeq) return;
+        wavePeaks = computePeaks(ab, 600);
+        wave.hidden = false;
+        drawWave();
+      }, function(){ /* decode failed (codec) — no waveform, no noise */ });
+      if (p && p["catch"]) p["catch"](function(){});   // modern engines also return a promise — keep its rejection silent too
+    })["catch"](function(){});
+  }
+  function computePeaks(ab, buckets){
+    var ch0 = ab.getChannelData(0);
+    var ch1 = ab.numberOfChannels > 1 ? ab.getChannelData(1) : null;
+    var n = ch0.length, per = Math.max(1, Math.floor(n / buckets));
+    var stride = Math.max(1, Math.floor(per / 64));              // sample within each bucket for speed
+    var out = [], i, j, s, e, v, w, peak;
+    for (i = 0; i < buckets; i++){
+      s = i * per; e = Math.min(n, s + per); peak = 0;
+      for (j = s; j < e; j += stride){
+        v = ch0[j] < 0 ? -ch0[j] : ch0[j];
+        if (ch1){ w = ch1[j] < 0 ? -ch1[j] : ch1[j]; if (w > v) v = w; }
+        if (v > peak) peak = v;
+      }
+      out.push(peak);
+    }
+    return out;
+  }
+  function drawWave(){
+    if (!wavePeaks || wave.hidden) return;
+    var dpr = window.devicePixelRatio || 1;
+    var cw = wave.clientWidth || 480, ch = wave.clientHeight || 88;
+    wave.width = Math.round(cw * dpr); wave.height = Math.round(ch * dpr);
+    var g = wave.getContext("2d");
+    if (!g) return;
+    g.clearRect(0, 0, wave.width, wave.height);
+    g.fillStyle = getComputedStyle(root).getPropertyValue("--accent").replace(/\s/g, "") || "#4f46e5";
+    g.globalAlpha = 0.85;
+    var n = wavePeaks.length, bw = wave.width / n, mid = wave.height / 2, h;
+    for (var i = 0; i < n; i++){
+      h = wavePeaks[i] * (wave.height - 4 * dpr);
+      if (h < dpr) h = dpr;
+      g.fillRect(i * bw + bw * 0.15, mid - h / 2, bw * 0.7 > 1 ? bw * 0.7 : 1, h);
+    }
+    g.globalAlpha = 1;
+  }
+  wave.addEventListener("click", function(e){                    // click-to-seek
+    if (!audioEl || !(audioEl.duration > 0)) return;
+    var r = wave.getBoundingClientRect();
+    var frac = (e.clientX - r.left) / (r.width || 1);
+    if (frac < 0) frac = 0;
+    if (frac > 1) frac = 1;
+    audioEl.currentTime = frac * audioEl.duration;
+  });
+  window.addEventListener("resize", drawWave);
+
+  function openDialog(){ fileInput.click(); }
+
+  fileInput.addEventListener("change", function(e){
+    var f = e.target.files && e.target.files[0];
+    if (f) readFile(f);
+    fileInput.value = "";
+  });
+
+  // Copy the track details (tags when present, else name + meta line)
+  id("btnCopy").addEventListener("click", function(){
+    if (!currentFile){ toast("Nothing to copy yet"); return; }
+    var t = tagInfo || {};
+    var lines = [t.title || baseName(currentName)];
+    if (t.artist) lines.push(t.artist);
+    if (t.album) lines.push(t.album + (t.year ? " (" + t.year + ")" : ""));
+    else if (t.year) lines.push(t.year);
+    lines.push(metaLine.textContent || currentName);
+    var toCopy = lines.join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(toCopy).then(
+        function(){ toast("Details copied"); },
+        function(){ fallbackCopy(toCopy); }
+      );
+    } else {
+      fallbackCopy(toCopy);
+    }
+  });
+
+  function fallbackCopy(text){
+    var ta = doc.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    doc.body.appendChild(ta); ta.select();
+    try { doc.execCommand("copy"); toast("Details copied"); }
+    catch (err){ toast("Copy not supported"); }
+    doc.body.removeChild(ta);
+  }
+
+  id("btnClear").addEventListener("click", clearAll);
+
+  // Empty-state acts as an open button (great on mobile)
+  empty.addEventListener("click", openDialog);
+  empty.addEventListener("keydown", function(e){
+    if (e.key === "Enter" || e.key === " "){ e.preventDefault(); openDialog(); }
+  });
+
+  // ---------- Header: while viewing it auto-hides after 3s, collapsing to a ----------
+  // ---------- thick handle; hover / touch / scroll-up brings it back. ----------------
+  var HDR_IDLE_MS = 3000, HDR_THRESH = 6;
+  var hdrIdleTimer = null;
+  var lastPos = { win:0, pane:0 };
+
+  function showHeader(){ body.classList.remove("hdr-hidden"); }
+  // the player is the rendered plane (there is no source plane), so it auto-hides while viewing
+  function hideHeader(){ if (body.classList.contains("viewing") && mode === "player") body.classList.add("hdr-hidden"); }
+  function armIdleHide(){ clearTimeout(hdrIdleTimer); hdrIdleTimer = setTimeout(hideHeader, HDR_IDLE_MS); }
+  function revealHeader(){ showHeader(); armIdleHide(); }
+
+  function onScroll(key, pos){
+    if (!body.classList.contains("viewing")) return;
+    var delta = pos - lastPos[key];
+    lastPos[key] = pos;
+    if (delta > HDR_THRESH){ hideHeader(); }            // scroll down -> collapse to the handle
+    else if (delta < -HDR_THRESH){ revealHeader(); }    // scroll up   -> reveal, then auto-hide after 3s
+  }
+
+  window.addEventListener("scroll", function(){ onScroll("win", window.pageYOffset || root.scrollTop || 0); }, { passive:true });
+  playerView.addEventListener("scroll", function(){ onScroll("pane", playerView.scrollTop); }, { passive:true });
+
+  // Reveal by moving the pointer onto the top strip / handle (desktop) or tapping it (mobile).
+  hoverZone.addEventListener("mouseenter", revealHeader);
+  hoverZone.addEventListener("click", revealHeader);
+  hoverZone.addEventListener("touchstart", function(){ revealHeader(); }, { passive:true });
+  // keep the header up while the pointer is over it; re-arm the 3s auto-hide when it leaves
+  topbar.addEventListener("mouseenter", function(){ showHeader(); clearTimeout(hdrIdleTimer); });
+  topbar.addEventListener("mouseleave", function(){ armIdleHide(); });
+
+  // Measure the header so the player pane can clear the fixed bar.
+  function measureHeader(){ root.style.setProperty("--hdr-h", (topbar ? topbar.offsetHeight : 56) + "px"); }
+  measureHeader();
+  window.addEventListener("resize", measureHeader);
+
+  // Footer: the close button hides the footer for this session (returns on reload).
+  id("btnHideFooter").addEventListener("click", function(){ if (footerEl) footerEl.hidden = true; });
+
+  // ---------- Hamburger flyout nav ----------
+  var btnMenu = id("btnMenu"), navBackdrop = id("navBackdrop");
+  function setNav(open){ body.classList.toggle("nav-open", open); btnMenu.setAttribute("aria-expanded", open ? "true" : "false"); }
+  btnMenu.addEventListener("click", function(){ setNav(!body.classList.contains("nav-open")); });
+  navBackdrop.addEventListener("click", function(){ setNav(false); });
+  doc.addEventListener("keydown", function(e){
+    if (!id("routeCard").hidden){                     // §6.10 offer card is modal
+      if (e.key === "Escape"){ hideRouteCard(); return; }
+      if (e.key === "Tab"){                           // two-button focus wrap (aria-modal)
+        e.preventDefault();
+        var go = id("routeGo"), no = id("routeDismiss");
+        (doc.activeElement === go || go.disabled ? no : go).focus();
+        return;
+      }
+    }
+    if (e.key === "Escape") setNav(false);
+  });
+
+  // ---------- Background color (chosen by the user, remembered in a cookie) ----------
+  function setCookie(name, val){
+    doc.cookie = name + "=" + encodeURIComponent(val) + "; max-age=31536000; path=/; SameSite=Lax";
+  }
+  function getCookie(name){
+    var m = doc.cookie.match("(?:^|; )" + name.replace(/([.*+?^${}()|[\]\\])/g, "\\$1") + "=([^;]*)");
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function hexToRgb(h){
+    h = h.replace("#", "");
+    if (h.length === 3) h = h.charAt(0)+h.charAt(0)+h.charAt(1)+h.charAt(1)+h.charAt(2)+h.charAt(2);
+    var n = parseInt(h, 16);
+    return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+  }
+  function srgb(c){ c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); }
+  function luminance(rgb){ return 0.2126*srgb(rgb.r) + 0.7152*srgb(rgb.g) + 0.0722*srgb(rgb.b); }
+  function mix(a, b, t){
+    return "rgb(" + Math.round(a.r+(b.r-a.r)*t) + "," + Math.round(a.g+(b.g-a.g)*t) + "," + Math.round(a.b+(b.b-a.b)*t) + ")";
+  }
+  function rgbStr(c){ return "rgb(" + c.r + "," + c.g + "," + c.b + ")"; }
+
+  // Syntax palettes kept for shell parity (no code plane here, but the tokens exist).
+  var HL_LIGHT = { comment:"#6e7781", keyword:"#cf222e", tag:"#116329", attr:"#0550ae", string:"#0a3069", number:"#0550ae", title:"#8250df", built:"#953800" };
+  var HL_DARK  = { comment:"#8b949e", keyword:"#ff7b72", tag:"#7ee787", attr:"#79c0ff", string:"#a5d6ff", number:"#79c0ff", title:"#d2a8ff", built:"#ffa657" };
+
+  function applyColor(hex){
+    if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) hex = "#ffffff";
+    var bg = hexToRgb(hex);
+    // Pick black or white text by whichever contrasts better (crossover ~0.179).
+    var lightText = luminance(bg) <= 0.179;          // dark background -> light text
+    var text = lightText ? { r:240, g:243, b:246 } : { r:31, g:35, b:40 };
+    var accentHex = lightText ? "#8b93ff" : "#4f46e5";
+    var ac = hexToRgb(accentHex);
+    var hl = lightText ? HL_DARK : HL_LIGHT;
+    var s = root.style;
+    s.setProperty("--bg", hex);
+    s.setProperty("--surface", hex);
+    s.setProperty("--text", rgbStr(text));
+    s.setProperty("--code-text", rgbStr(text));
+    s.setProperty("--muted", mix(bg, text, 0.45));
+    s.setProperty("--border", mix(bg, text, 0.24));
+    s.setProperty("--border-soft", mix(bg, text, 0.13));
+    s.setProperty("--code-bg", mix(bg, text, 0.07));
+    s.setProperty("--hover", mix(bg, text, 0.10));
+    s.setProperty("--accent", accentHex);
+    s.setProperty("--accent-contrast", lightText ? "#0d1117" : "#ffffff");
+    s.setProperty("--overlay", "rgba(" + ac.r + "," + ac.g + "," + ac.b + ",0.12)");
+    s.setProperty("--shadow", lightText ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.12)");
+    s.setProperty("--header-bg", "rgba(" + bg.r + "," + bg.g + "," + bg.b + ",0.9)");
+    s.setProperty("--hl-comment", hl.comment);
+    s.setProperty("--hl-keyword", hl.keyword);
+    s.setProperty("--hl-tag", hl.tag);
+    s.setProperty("--hl-attr", hl.attr);
+    s.setProperty("--hl-string", hl.string);
+    s.setProperty("--hl-number", hl.number);
+    s.setProperty("--hl-title", hl.title);
+    s.setProperty("--hl-built", hl.built);
+    s.colorScheme = lightText ? "dark" : "light";
+    themeColor.setAttribute("content", hex);
+    drawWave();                                       // waveform peaks repaint in the new accent
+  }
+
+  function isHex6(v){ return /^#([0-9a-f]{6})$/i.test(v || ""); }
+  function saveColor(val){
+    setCookie("mykk-bg", val);                                  // primary
+    try { localStorage.setItem("mykk-bg", val); } catch (e) {}  // fallback (e.g. file://)
+  }
+  function loadColor(){
+    var v = getCookie("mykk-bg");
+    if (!isHex6(v)) { try { v = localStorage.getItem("mykk-bg"); } catch (e) { v = null; } }
+    return isHex6(v) ? v : ((window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "#0d1117" : "#ffffff");
+  }
+
+  var saved = loadColor();
+  bgPicker.value = saved;
+  applyColor(saved);
+  bgPicker.addEventListener("input", function(){
+    applyColor(bgPicker.value);
+    saveColor(bgPicker.value);
+    syncThemeToggle();
+  });
+
+  var themeToggle=document.getElementById("themeToggle"),themeIconSun=document.getElementById("themeIconSun"),themeIconMoon=document.getElementById("themeIconMoon");
+  function isDarkBg(){ try { return luminance(hexToRgb(bgPicker.value)) <= 0.179; } catch(e){ return false; } }
+  function syncThemeToggle(){ if(!themeToggle) return; var dark=isDarkBg(); themeToggle.setAttribute("aria-pressed", dark?"true":"false"); themeToggle.setAttribute("aria-label", dark?"Switch to light theme":"Switch to dark theme"); if(themeIconSun){ if(dark) themeIconSun.setAttribute("hidden",""); else themeIconSun.removeAttribute("hidden"); } if(themeIconMoon){ if(dark) themeIconMoon.removeAttribute("hidden"); else themeIconMoon.setAttribute("hidden",""); } }
+  if(themeToggle){ themeToggle.addEventListener("click", function(){ var next=isDarkBg()?"#ffffff":"#0d1117"; bgPicker.value=next; applyColor(next); saveColor(next); syncThemeToggle(); }); }
+  syncThemeToggle();
+
+  // ---------- Drag & drop (anywhere; drop-to-replace) ----------
+  var dragDepth = 0;
+  function showOverlay(s){ overlay.classList.toggle("show", s); }
+  window.addEventListener("dragenter", function(e){
+    if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") === -1) return;
+    e.preventDefault(); dragDepth++; showOverlay(true);
+  });
+  window.addEventListener("dragover", function(e){
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+  });
+  window.addEventListener("dragleave", function(e){
+    e.preventDefault(); dragDepth--; if (dragDepth <= 0){ dragDepth = 0; showOverlay(false); }
+  });
+  window.addEventListener("drop", function(e){
+    e.preventDefault(); dragDepth = 0; showOverlay(false);
+    var dt = e.dataTransfer; if (!dt) return;
+    if (dt.files && dt.files.length){ readFile(dt.files[0]); }
+    // text drops are meaningless for a binary audio viewer — ignored
+  });
+
+  // ---------- Paste (a copied file routes/loads; text is ignored) ----------
+  window.addEventListener("paste", function(e){
+    var cd = e.clipboardData || window.clipboardData;
+    if (!cd) return;
+    if (cd.files && cd.files.length){ e.preventDefault(); readFile(cd.files[0]); }
+  });
+
+  // ---------- Family router (§6.10): wrong-viewer redirect offer + hand-off ----------
+    /* FV-MAP-START — generated from family-map.json (canonical); deep-equality enforced by the harness */
+    var FAMILY = {
+      audio:    { domain:"audio-viewer.us"     , label:"Audio Viewer"     , kind:"an audio file" },
+      cert:     { domain:"cert-viewer.us"      , label:"Cert Viewer"      , kind:"a certificate" },
+      data:     { domain:"data-viewer.us"      , label:"Data Viewer"      , kind:"a data file" },
+      docx:     { domain:"docx-viewer.us"      , label:"DOCX Viewer"      , kind:"a Word document" },
+      eml:      { domain:"eml-viewer.us"       , label:"EML Viewer"       , kind:"an email file" },
+      epub:     { domain:"epub-viewer.us"      , label:"EPUB Viewer"      , kind:"an e-book" },
+      html:     { domain:"html-viewer.us"      , label:"HTML Viewer"      , kind:"a web or source-code file" },
+      image:    { domain:"image-viewer.us"     , label:"Image Viewer"     , kind:"an image" },
+      log:      { domain:"log-viewer.us"       , label:"Log Viewer"       , kind:"a log file" },
+      markdown: { domain:"markdown-viewer.us"  , label:"Markdown Viewer"  , kind:"a Markdown or text file" },
+      pdf:      { domain:"pdf-viewer.us"       , label:"PDF Viewer"       , kind:"a PDF" },
+      pptx:     { domain:"pptx-viewer.us"      , label:"PPTX Viewer"      , kind:"a presentation" },
+      pub:      { domain:"pub-viewer.us"       , label:"PUB Viewer"       , kind:"a Publisher file" },
+      sheets:   { domain:"sheets-viewer.us"    , label:"Sheets Viewer"    , kind:"a spreadsheet" },
+      video:    { domain:"video-viewer.us"     , label:"Video Viewer"     , kind:"a video" }
+    };
+    var FAMILY_HUB = "file-viewer.us";
+    var FAMILY_NAMES = {"robots.txt":"html"};
+    var FAMILY_MAP = {
+      // sheets
+      "123":"sheets", xlsx:"sheets", xlsm:"sheets", xlsb:"sheets", xls:"sheets", xlt:"sheets", xltx:"sheets", xltm:"sheets",
+      xlam:"sheets", ods:"sheets", fods:"sheets", dif:"sheets", prn:"sheets", dbf:"sheets", numbers:"sheets", xlml:"sheets",
+      wk1:"sheets", wk3:"sheets", wks:"sheets", et:"sheets", uos:"sheets",
+      // cert
+      pem:"cert", crt:"cert", cer:"cert", der:"cert", csr:"cert", cert:"cert", p7b:"cert", p12:"cert",
+      pfx:"cert",
+      // data
+      json:"data", jsonc:"data", json5:"data", jsonld:"data", ndjson:"data", yaml:"data", yml:"data", toml:"data",
+      csv:"data", tsv:"data", xml:"data", rss:"data", atom:"data", graphql:"data", gql:"data",
+      // docx
+      docx:"docx", docm:"docx", dotx:"docx", dotm:"docx", doc:"docx", dot:"docx", rtf:"docx", odt:"docx",
+      // eml
+      eml:"eml", mbox:"eml", emlx:"eml", msg:"eml",
+      // epub
+      epub:"epub",
+      // html
+      html:"html", htm:"html", xhtml:"html", xht:"html", shtml:"html", shtm:"html", stm:"html", hta:"html",
+      mhtml:"html", mht:"html", css:"html", scss:"html", sass:"html", less:"html", styl:"html", pcss:"html",
+      postcss:"html", js:"html", mjs:"html", cjs:"html", jsx:"html", ts:"html", mts:"html", cts:"html",
+      tsx:"html", coffee:"html", htaccess:"html", htpasswd:"html", env:"html", ini:"html", conf:"html", webmanifest:"html",
+      map:"html", php:"html", phtml:"html", asp:"html", aspx:"html", ascx:"html", cshtml:"html", vbhtml:"html",
+      jsp:"html", jspx:"html", cfm:"html", erb:"html", rhtml:"html", ejs:"html", hbs:"html", handlebars:"html",
+      mustache:"html", njk:"html", liquid:"html", jinja:"html", j2:"html", twig:"html", pug:"html", jade:"html",
+      haml:"html", slim:"html", vue:"html", svelte:"html", astro:"html",
+      // image
+      png:"image", jpg:"image", jpeg:"image", jpe:"image", jfif:"image", gif:"image", webp:"image", avif:"image",
+      svg:"image", svgz:"image", bmp:"image", dib:"image", ico:"image", cur:"image", tif:"image", tiff:"image",
+      tga:"image", targa:"image", icb:"image", vda:"image", vst:"image", qoi:"image", pcx:"image", ppm:"image",
+      pgm:"image", pbm:"image", pnm:"image", pam:"image", ff:"image", dds:"image", heic:"image", heif:"image",
+      jxl:"image", psd:"image",
+      // log
+      log:"log", out:"log", err:"log", trace:"log", syslog:"log",
+      // markdown
+      md:"markdown", markdown:"markdown", mdx:"markdown", txt:"markdown", rst:"markdown", adoc:"markdown",
+      // pdf
+      pdf:"pdf",
+      // pptx
+      pptx:"pptx", pptm:"pptx", ppsx:"pptx", ppsm:"pptx", potx:"pptx", potm:"pptx", ppt:"pptx",
+      // pub
+      pub:"pub",
+      // audio
+      mp3:"audio", wav:"audio", flac:"audio", m4a:"audio", aac:"audio", ogg:"audio", oga:"audio", opus:"audio",
+      weba:"audio", mka:"audio", aif:"audio", aiff:"audio", wma:"audio", mid:"audio", midi:"audio",
+      // video
+      webm:"video", mp4:"video", m4v:"video", ogv:"video", mov:"video", mkv:"video", avi:"video", wmv:"video"
+    };
+    /* FV-MAP-END */
+    var FAMILY_ORIGINS = Object.keys(FAMILY).map(function (k) { return "https://" + FAMILY[k].domain; })
+      .concat("https://" + FAMILY_HUB);
+  var DOMAIN = "audio-viewer.us";
+
+  var routeFile = null, routeKey = "", routePrevFocus = null, handoff = null;
+  function cancelHandoff(){                    // tear down a pending hand-off (sender below)
+    if (!handoff) return;
+    window.removeEventListener("message", handoff.onMsg);
+    clearTimeout(handoff.timer);
+    handoff = null;
+  }
+  function showRouteCard(file, key){
+    cancelHandoff();                           // a new offer aborts any pending hand-off
+    if (id("routeCard").hidden) routePrevFocus = document.activeElement;  // don't capture our own button
+    routeFile = file; routeKey = key;
+    var t = FAMILY[key];
+    // ⁨…⁩ (FSI…PDI) bidi-isolate the untrusted name so U+202E-style
+    // overrides can't visually reorder the sentence.
+    id("routeMsg").textContent = "“⁨" + file.name + "⁩” looks like " + t.kind + " — it belongs to " + t.label + ".";
+    id("routeGo").textContent = "Open " + t.domain + " ↗";
+    id("routeSub").textContent = "Your file stays on this device — nothing is uploaded.";
+    id("routeGo").disabled = false;
+    id("routeBackdrop").hidden = false; id("routeCard").hidden = false;
+    id("routeGo").focus();
+  }
+  function hideRouteCard(){
+    cancelHandoff();                           // dismissal aborts a pending hand-off
+    id("routeBackdrop").hidden = true; id("routeCard").hidden = true;
+    routeFile = null; routeKey = "";
+    if (routePrevFocus && routePrevFocus.focus) routePrevFocus.focus();
+  }
+  function familyRoute(file){
+    var n = String(file && file.name || "").toLowerCase();
+    var key = FAMILY_NAMES[n];
+    if (!key){
+      var i = n.lastIndexOf(".");
+      var ext = i >= 0 ? n.slice(i + 1) : "";
+      key = FAMILY_MAP[ext];
+    }
+    if (!key || FAMILY[key].domain === DOMAIN) return false;  // unknown type, or our own → caller keeps its toast
+    showRouteCard(file, key);
+    return true;
+  }
+
+  // Sender — routeGo is a real user gesture, so no popup blocker. Keep the window
+  // handle: it is the message channel (no `noopener` on this one window.open).
+  id("routeGo").addEventListener("click", function(){
+    if (!routeFile || id("routeGo").disabled) return;               // no double-fire
+    cancelHandoff();
+    var t = FAMILY[routeKey], origin = "https://" + t.domain, file = routeFile;
+    var w = window.open(origin + "/#fvh=" + encodeURIComponent(file.name));
+    if (!w){ id("routeSub").textContent = "Couldn’t open the tab — allow pop-ups for this site and try again."; return; }
+    id("routeGo").disabled = true;
+    var h = {};
+    h.onMsg = function(e){
+      if (e.source !== w || e.origin !== origin || !e.data) return;
+      if (e.data.type === "fv-ready") w.postMessage({ type:"fv-file", file:file }, origin);
+      else if (e.data.type === "fv-ack"){ hideRouteCard(); toast("Sent to " + t.label); }  // hideRouteCard tears the handshake down
+    };
+    h.timer = setTimeout(function(){
+      if (handoff !== h) return;
+      cancelHandoff();
+      id("routeSub").textContent = "Tab opened — drop the file there.";   // Level-1 fallback
+    }, 10000);
+    handoff = h;
+    window.addEventListener("message", h.onMsg);
+  });
+  id("routeDismiss").addEventListener("click", hideRouteCard);
+  id("routeBackdrop").addEventListener("click", hideRouteCard);
+
+  // Receiver — accept a File handed over from a sibling family tab (§6.10).
+  window.addEventListener("message", function(e){
+    if (FAMILY_ORIGINS.indexOf(e.origin) === -1) return;      // family origins only
+    var d = e.data;
+    if (d && d.type === "fv-file" && d.file instanceof File){ // clone re-creates a real File in this realm
+      readFile(d.file);
+      e.source.postMessage({ type:"fv-ack" }, e.origin);      // ack = received and handed to the loader
+    }
+  });
+  var fvh = /[#&]fvh=([^&]*)/.exec(location.hash);
+  if (fvh){
+    var fvhName = fvh[1];                                   // ⚠️ stranger-controlled — textContent only
+    try { fvhName = decodeURIComponent(fvhName); } catch (_) {}  // malformed %-escapes must not abort the receiver
+    history.replaceState(null, "", location.pathname + location.search);  // always clear, opener or not
+    if (window.opener){
+      try { window.opener.postMessage({ type:"fv-ready" }, "*"); } catch(_){}
+      window.opener = null;    // sever the reverse-navigation channel once the ping is out
+      var emptySub = doc.querySelector(".empty-sub");         // hand-off pending: say so in the empty state
+      if (emptySub){
+        var emptySubCopy = emptySub.textContent;
+        emptySub.textContent = "Receiving “⁨" + fvhName + "⁩”…";  // FSI…PDI isolate the untrusted name
+        setTimeout(function(){ emptySub.textContent = emptySubCopy; }, 10000);  // revert if nothing arrives
+      }
+    }
+  }
+})();
+</script>
+</body>
+</html>

@@ -19,3 +19,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Bundled-component notices (see NOTICE.md for details):
+
+- No third-party JavaScript libraries are bundled. The ID3v2 tag reader and
+  the waveform renderer are original to this project.
+- The audio-file icon (favicon / header / nav icon) is file_type_audio.svg
+  from vscode-icons (https://github.com/vscode-icons/vscode-icons),
+  Copyright (c) Roberto Huertas, MIT License.
+- fonts/ contains a subset of JetBrains Mono, Copyright (c) 2020 The JetBrains
+  Mono Project Authors, SIL Open Font License 1.1 (fonts/OFL.txt).
