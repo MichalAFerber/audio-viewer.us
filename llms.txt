@@ -1,0 +1,13 @@
+# Audio Viewer
+
+> A fast, single-file audio player. Drop an .mp3/.wav/.flac/.m4a/.ogg/.opus file to play it with ID3 tags, cover art and a waveform — all in your browser, nothing uploaded.
+
+The viewer is one self-contained HTML file (no build step) and works offline. Files never leave the visitor's device — no uploads, no accounts, no server-side processing.
+
+## Links
+
+- [Open the viewer](https://audio-viewer.us/)
+- [GitHub](https://github.com/MichalAFerber/audio-viewer.us): Source (single index.html)
+- [File Viewer family hub](https://file-viewer.us/): All viewers in the family
+- [Privacy Policy](https://file-viewer.us/privacy.html)
+- [Terms of Use](https://file-viewer.us/terms.html)
