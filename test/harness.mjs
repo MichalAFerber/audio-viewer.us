@@ -90,15 +90,18 @@ function makeTaggedMp3() {
 
 writeFileSync(join(FIX, "tone.wav"), makeWav());
 writeFileSync(join(FIX, "tone2.wav"), makeWav(1, 22050, 660));
+writeFileSync(join(FIX, "long.wav"), makeWav(8));   // v2: long enough to seek/play against
 writeFileSync(join(FIX, "tagged.mp3"), makeTaggedMp3());
 writeFileSync(join(FIX, "fake.wma"), Buffer.from("definitely not decodable windows media"));
 writeFileSync(join(FIX, "sample.xyz"), "unmapped type\n");
 writeFileSync(join(FIX, "test.json"), '{"hello":"world"}\n');
 
 // ------------------------------------------------------------------- setup --
-const browser = await chromium.launch(
-  process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}
-);
+const browser = await chromium.launch({
+  // v2 checks drive play() from evaluate — no synthetic-gesture ambiguity, please.
+  args: ["--autoplay-policy=no-user-gesture-required"],
+  ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
+});
 const results = [];
 const check = (name, ok, detail) => results.push([name, !!ok, detail]);
 const errs = [];
@@ -220,6 +223,13 @@ check("id3: cover art rendered from APIC as a data: URI", await page.evaluate(()
   const img = document.getElementById("coverArt");
   return !img.hidden && img.src.startsWith("data:image/png;base64,");
 }));
+check("v2: mediaSession metadata mirrors the ID3 tag (incl. APIC artwork)", await page.evaluate(() => {
+  if (!("mediaSession" in navigator)) return true;   // engine without Media Session — skip gracefully
+  const md = navigator.mediaSession.metadata;
+  return !!md && md.title === "Sine Song" && md.artist === "The Test Tones" &&
+    md.album === "Harness Sessions" && md.artwork.length === 1 &&
+    md.artwork[0].src.startsWith("data:image/png;base64,") && md.artwork[0].sizes === "300x300";
+}));
 await sleep(1500);   // give the pipeline time to either load metadata or fail
 check("mp3: plays or shows the honest codec-hint card (no silent failure)", await page.evaluate(() => {
   const a = document.querySelector("#audioMount audio");
@@ -270,6 +280,148 @@ check("router: unmapped type gets the rejection toast, no card", await page.eval
   return /isn’t a supported audio file/.test(document.getElementById("toast").textContent) &&
     document.getElementById("routeCard").hidden;
 }));
+
+// ------------------------------------------------- v2 features (§17.2 v2) --
+// The auto-hiding header collapses 3 s after load; re-reveal it (and park the
+// pointer on it, which pins it open) before driving header buttons.
+const revealHeader = async () => {
+  await page.evaluate(() => document.body.classList.remove("hdr-hidden"));
+  await page.hover(".topbar");
+};
+
+// -- waveform: click-to-seek + slider semantics + live playhead
+await page.setInputFiles("#fileInput", join(FIX, "long.wav"));
+await page.waitForFunction(() => {
+  const a = document.querySelector("#audioMount audio");
+  return a && a.duration > 7;
+}, null, { timeout: 10000 });
+await page.waitForFunction(() => !document.getElementById("wave").hidden, null, { timeout: 10000 });
+const wbox = await page.locator("#wave").boundingBox();
+await page.mouse.click(wbox.x + wbox.width * 0.75, wbox.y + wbox.height / 2);
+check("v2: waveform click at 75% width seeks to ~75% of duration", await page.evaluate(() => {
+  const a = document.querySelector("#audioMount audio");
+  return Math.abs(a.currentTime / a.duration - 0.75) < 0.06;
+}));
+check("v2: canvas is a keyboard slider (role/tabindex/aria range)", await page.evaluate(() => {
+  const w = document.getElementById("wave");
+  return w.getAttribute("role") === "slider" && w.tabIndex === 0 &&
+    w.getAttribute("aria-valuemin") === "0" &&
+    +w.getAttribute("aria-valuemax") >= 7 && +w.getAttribute("aria-valuenow") >= 5;
+}));
+await page.focus("#wave");
+await page.keyboard.press("ArrowLeft");
+check("v2: ← on the focused canvas seeks −5 s", await page.evaluate(() => {
+  const a = document.querySelector("#audioMount audio");
+  return Math.abs(a.currentTime - (a.duration * 0.75 - 5)) < 0.3;
+}));
+
+// -- Space toggles play/pause; the playhead (aria-valuenow) advances while playing
+await page.evaluate(() => {
+  document.querySelector("#audioMount audio").currentTime = 0;
+  if (document.activeElement) document.activeElement.blur();
+});
+await page.keyboard.press(" ");
+check("v2: Space starts playback", await page.evaluate(() => !document.querySelector("#audioMount audio").paused));
+check("v2: playhead advances (aria-valuenow grows while playing)", await page
+  .waitForFunction(() => +document.getElementById("wave").getAttribute("aria-valuenow") >= 1, null, { timeout: 10000 })
+  .then(() => true, () => false));
+await page.keyboard.press(" ");
+check("v2: Space pauses again", await page.evaluate(() => document.querySelector("#audioMount audio").paused));
+
+// -- ←/→ / ↑/↓ / m document-level shortcuts
+const tBefore = await page.evaluate(() => document.querySelector("#audioMount audio").currentTime);
+await page.keyboard.press("ArrowRight");
+check("v2: → seeks +5 s", await page.evaluate((t0) => {
+  const a = document.querySelector("#audioMount audio");
+  return Math.abs(a.currentTime - t0 - 5) < 0.2;
+}, tBefore));
+await page.keyboard.press("ArrowDown");
+check("v2: ↓ lowers volume by 0.05 (clamped)", await page.evaluate(() =>
+  Math.abs(document.querySelector("#audioMount audio").volume - 0.95) < 0.001));
+await page.keyboard.press("ArrowUp");
+check("v2: ↑ raises volume back to 1", await page.evaluate(() =>
+  document.querySelector("#audioMount audio").volume === 1));
+await page.keyboard.press("m");
+check("v2: m mutes", await page.evaluate(() => document.querySelector("#audioMount audio").muted));
+await page.keyboard.press("m");
+check("v2: m unmutes", await page.evaluate(() => !document.querySelector("#audioMount audio").muted));
+
+// -- loop: l key + header iconbtn (aria-pressed + .active)
+await page.keyboard.press("l");
+check("v2: l enables loop + button reflects it", await page.evaluate(() => {
+  const a = document.querySelector("#audioMount audio"), b = document.getElementById("btnLoop");
+  return a.loop === true && b.getAttribute("aria-pressed") === "true" && b.classList.contains("active");
+}));
+await revealHeader();
+await page.click("#btnLoop");
+check("v2: loop button click turns it back off", await page.evaluate(() => {
+  const a = document.querySelector("#audioMount audio"), b = document.getElementById("btnLoop");
+  return a.loop === false && b.getAttribute("aria-pressed") === "false" && !b.classList.contains("active");
+}));
+
+// -- speed: cycles 0.75 → 1 → 1.25 → 1.5 → 2 → 0.75, face shows the rate
+const rateSeq = [];
+for (let i = 0; i < 5; i++) {
+  await page.click("#btnSpeed");
+  rateSeq.push(await page.evaluate(() => [
+    document.getElementById("btnSpeed").textContent,
+    document.querySelector("#audioMount audio").playbackRate,
+  ]));
+}
+check("v2: speed button cycles (face matches playbackRate)",
+  JSON.stringify(rateSeq) === JSON.stringify([["1.25×", 1.25], ["1.5×", 1.5], ["2×", 2], ["0.75×", 0.75], ["1×", 1]]),
+  JSON.stringify(rateSeq));
+await page.click("#btnSpeed");   // leave it at 1.25× to prove the per-file reset
+await page.setInputFiles("#fileInput", join(FIX, "tone.wav"));
+await page.waitForFunction(() => {
+  const a = document.querySelector("#audioMount audio");
+  return a && a.duration > 0 && a.duration < 2;
+}, null, { timeout: 10000 });
+check("v2: speed resets to 1× per new file", await page.evaluate(() =>
+  document.querySelector("#audioMount audio").playbackRate === 1 &&
+  document.getElementById("btnSpeed").textContent === "1×"));
+
+// -- volume persists across a reload (fv-vol / fv-muted)
+await page.evaluate(() => { document.querySelector("#audioMount audio").volume = 0.35; });
+await page.waitForFunction(() => {
+  try { return localStorage.getItem("fv-vol") === "0.35" && localStorage.getItem("fv-muted") === "0"; }
+  catch (e) { return false; }
+}, null, { timeout: 5000 });
+await page.reload({ waitUntil: "load" });
+await page.setInputFiles("#fileInput", join(FIX, "tone.wav"));
+await page.waitForFunction(() => {
+  const a = document.querySelector("#audioMount audio");
+  return a && a.duration > 0;
+}, null, { timeout: 10000 });
+check("v2: volume persists across reload", await page.evaluate(() => {
+  const a = document.querySelector("#audioMount audio");
+  return Math.abs(a.volume - 0.35) < 0.001 && a.muted === false;
+}));
+
+// -- shortcuts are inert while the §6.10 route card is open
+await page.setInputFiles("#fileInput", join(FIX, "test.json"));
+await page.waitForSelector("#routeCard:not([hidden])", { timeout: 5000 });
+await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });  // Space must not activate the focused Go button
+await page.keyboard.press(" ");
+await page.keyboard.press("m");
+check("v2: shortcuts do NOT fire while the route card is open", await page.evaluate(() => {
+  const a = document.querySelector("#audioMount audio");
+  return !document.getElementById("routeCard").hidden && a.paused && a.muted === false;
+}));
+await page.keyboard.press("Escape");
+check("v2: Escape still dismisses the card afterwards", await page.evaluate(() =>
+  document.getElementById("routeCard").hidden));
+
+// -- shortcuts are inert while the family-nav panel is open
+await revealHeader();
+await page.click("#btnMenu");
+await page.keyboard.press("m");
+check("v2: shortcuts do NOT fire while the nav panel is open", await page.evaluate(() =>
+  document.body.classList.contains("nav-open") &&
+  !document.querySelector("#audioMount audio").muted));
+await page.keyboard.press("Escape");
+check("v2: Escape still closes the nav panel", await page.evaluate(() => !document.body.classList.contains("nav-open")));
+await page.click("#btnClear");
 
 // -- receiver: '#fvh' with a hostile hash boots clean and clears the hash
 const p3 = await ctx.newPage();
