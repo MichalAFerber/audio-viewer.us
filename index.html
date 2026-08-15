@@ -87,6 +87,7 @@
   .iconbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   .iconbtn svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
   .iconbtn.iconbtn-gh svg{width:22px;height:22px;fill:currentColor;stroke:none}
+  .iconbtn-rate{font-size:.8rem;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 
   /* Color swatch / picker (native input styled as a round-ish swatch) */
   .swatch-wrap{display:inline-flex}
@@ -181,6 +182,7 @@
   .track-title{margin:0; font-weight:650; font-size:1.06rem; color:var(--text); overflow-wrap:anywhere}
   .track-line{margin:0; color:var(--muted); font-size:.92rem; overflow-wrap:anywhere}
   .wave{width:100%; height:88px; display:block; border-radius:10px; background:var(--code-bg); cursor:pointer}
+  .wave:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   .player-card audio{width:100%; display:block}
   .meta-line{margin:0; text-align:center; color:var(--muted); font-size:.85rem}
 
@@ -267,6 +269,10 @@
   <img id="brandIcon" class="brand-icon" alt="" aria-hidden="true">
   <span class="doc-title" id="docTitle">Audio Viewer</span>
   <nav class="actions" aria-label="Actions">
+    <button id="btnLoop" class="iconbtn tip" type="button" data-tip="Loop" aria-label="Toggle loop" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+    </button>
+    <button id="btnSpeed" class="iconbtn iconbtn-rate tip" type="button" data-tip="Playback speed" aria-label="Playback speed: 1×">1×</button>
     <button id="btnCopy" class="iconbtn tip" type="button" data-tip="Copy track details" aria-label="Copy track details">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
     </button>
@@ -307,7 +313,7 @@
           <p class="track-line" id="trackAlbum" hidden></p>
         </div>
       </div>
-      <canvas id="wave" class="wave" aria-label="Waveform — click to seek" role="img" hidden></canvas>
+      <canvas id="wave" class="wave" tabindex="0" role="slider" aria-label="Seek within the track" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" hidden></canvas>
       <div id="audioMount"></div>
       <p class="meta-line" id="metaLine"></p>
     </div>
@@ -416,6 +422,20 @@
   var mode = "player";         // rendered plane only (binary viewer — no source plane)
   var toastTimer = null;
 
+  // ---------- v2 playback state (§17.2 v2) ----------
+  var loopOn = false;          // session-only; applied to each mounted <audio> (never persisted)
+  var RATES = [0.75, 1, 1.25, 1.5, 2];
+  var rateIdx = 1;             // resets to 1× per new file (never persisted)
+  var rafId = 0;               // playhead rAF loop (runs only while playing)
+  var MS = ("mediaSession" in navigator) ? navigator.mediaSession : null;
+  // Volume + mute persist across visits ("fv-vol" / "fv-muted"); file:// safe.
+  var savedVol = null, savedMuted = false;
+  try {
+    var sv = localStorage.getItem("fv-vol");
+    if (sv !== null && sv !== "" && isFinite(+sv)) savedVol = Math.min(1, Math.max(0, +sv));
+    savedMuted = localStorage.getItem("fv-muted") === "1";
+  } catch (e){}
+
   // Accepted audio types. .wma/.mid/.midi are accepted-with-notice: browsers ship
   // no native decoder (or synthesizer) for them, so they get an honest card
   // instead of a broken player. Everything else plays via the native element.
@@ -474,6 +494,7 @@
 
   // ---------- Player lifecycle ----------
   function teardownAudio(){
+    if (rafId){ cancelAnimationFrame(rafId); rafId = 0; }
     if (audioEl){
       try { audioEl.pause(); } catch (e){}
       audioEl.removeAttribute("src");
@@ -489,6 +510,9 @@
     trackArtist.hidden = true; trackArtist.textContent = "";
     trackAlbum.hidden = true; trackAlbum.textContent = "";
     wave.hidden = true; wavePeaks = null;
+    wave.setAttribute("aria-valuenow", "0");
+    wave.setAttribute("aria-valuemax", "0");
+    wave.removeAttribute("aria-valuetext");
     var g = wave.getContext && wave.getContext("2d");
     if (g) g.clearRect(0, 0, wave.width, wave.height);
     noticeEl.hidden = true; noticeEl.textContent = "";
@@ -532,13 +556,37 @@
     audioEl.addEventListener("loadedmetadata", function(){
       if (seq !== loadSeq) return;
       updateMeta(audioEl.duration);
+      syncWaveAria();
     });
     audioEl.addEventListener("error", function(){ if (seq === loadSeq) codecHint(ext); });
     audioEl.addEventListener("stalled", function(){
       if (seq === loadSeq && audioEl && !(audioEl.duration > 0)) codecHint(ext);
     });
+    // v2: live playhead (rAF only while playing; timeupdate keeps it honest when paused)
+    audioEl.addEventListener("play", startRaf);
+    audioEl.addEventListener("pause", stopRaf);
+    audioEl.addEventListener("ended", stopRaf);
+    audioEl.addEventListener("timeupdate", function(){
+      if (seq !== loadSeq) return;
+      syncWaveAria();
+      if (!rafId) drawWave();
+    });
+    // v2: volume + mute persistence (fires for both volume and muted changes)
+    audioEl.addEventListener("volumechange", function(){
+      if (seq !== loadSeq || !audioEl) return;
+      savedVol = audioEl.volume; savedMuted = audioEl.muted;
+      try {
+        localStorage.setItem("fv-vol", String(audioEl.volume));
+        localStorage.setItem("fv-muted", audioEl.muted ? "1" : "0");
+      } catch (e){}
+    });
+    if (savedVol !== null) audioEl.volume = savedVol;   // apply persisted volume before the first play
+    audioEl.muted = savedMuted;
+    rateIdx = 1; applyRate();                           // speed resets to 1× per new file
+    applyLoop();                                        // loop is session state — reapply to the fresh element
     audioEl.src = objectUrl;
     audioMount.appendChild(audioEl);
+    updateMediaSession();                               // filename first; ID3 tags refine it async
 
     readTags(file, seq);      // ID3v2.3/v2.4: title, artist, album, year, cover art
     buildWave(file, seq);     // Web Audio peaks (silently skipped >50 MB or if decode fails)
@@ -556,6 +604,7 @@
     doc.title = BASE_TITLE;
     body.classList.remove("viewing", "hdr-hidden");
     clearTimeout(hdrIdleTimer);
+    if (MS){ try { MS.metadata = null; } catch (e){} }
   }
 
   function readFile(file){
@@ -735,6 +784,7 @@
       coverArt.hidden = false;
       coverFallback.hidden = true;
     }
+    updateMediaSession();                                        // tags beat the filename on the lock screen
   }
 
   // ---------- Waveform (Web Audio peaks on a copy of the bytes) ----------
@@ -775,7 +825,9 @@
     if (!wavePeaks || wave.hidden) return;
     var dpr = window.devicePixelRatio || 1;
     var cw = wave.clientWidth || 480, ch = wave.clientHeight || 88;
-    wave.width = Math.round(cw * dpr); wave.height = Math.round(ch * dpr);
+    var W = Math.round(cw * dpr), H = Math.round(ch * dpr);
+    if (wave.width !== W) wave.width = W;      // resizing clears the canvas — only when it changed
+    if (wave.height !== H) wave.height = H;    // (the playhead repaints this every frame while playing)
     var g = wave.getContext("2d");
     if (!g) return;
     g.clearRect(0, 0, wave.width, wave.height);
@@ -788,6 +840,31 @@
       g.fillRect(i * bw + bw * 0.15, mid - h / 2, bw * 0.7 > 1 ? bw * 0.7 : 1, h);
     }
     g.globalAlpha = 1;
+    if (audioEl && isFinite(audioEl.duration) && audioEl.duration > 0){   // live playhead
+      var x = (audioEl.currentTime / audioEl.duration) * wave.width;
+      g.fillRect(x - dpr, 0, 2 * dpr, wave.height);
+    }
+  }
+
+  // ---------- v2: playhead loop + seek helpers + slider a11y ----------
+  function rafLoop(){ drawWave(); rafId = requestAnimationFrame(rafLoop); }
+  function startRaf(){ if (!rafId) rafId = requestAnimationFrame(rafLoop); }
+  function stopRaf(){ if (rafId){ cancelAnimationFrame(rafId); rafId = 0; } drawWave(); }
+  function syncWaveAria(){
+    if (!audioEl) return;
+    var d = audioEl.duration, t = audioEl.currentTime || 0;
+    if (isFinite(d) && d > 0) wave.setAttribute("aria-valuemax", String(Math.round(d)));
+    wave.setAttribute("aria-valuenow", String(Math.floor(t)));
+    wave.setAttribute("aria-valuetext", fmtTime(t) + (isFinite(d) && d > 0 ? " of " + fmtTime(d) : ""));
+  }
+  function seekBy(delta){
+    if (!audioEl || !isFinite(audioEl.duration)) return;
+    var t = audioEl.currentTime + delta;
+    if (t < 0) t = 0;
+    if (t > audioEl.duration) t = audioEl.duration;
+    audioEl.currentTime = t;
+    syncWaveAria();
+    if (!rafId) drawWave();
   }
   wave.addEventListener("click", function(e){                    // click-to-seek
     if (!audioEl || !(audioEl.duration > 0)) return;
@@ -796,6 +873,12 @@
     if (frac < 0) frac = 0;
     if (frac > 1) frac = 1;
     audioEl.currentTime = frac * audioEl.duration;
+    syncWaveAria();
+    if (!rafId) drawWave();
+  });
+  wave.addEventListener("keydown", function(e){                  // slider keyboard access
+    if (e.key === "ArrowRight"){ e.preventDefault(); e.stopPropagation(); seekBy(5); }
+    else if (e.key === "ArrowLeft"){ e.preventDefault(); e.stopPropagation(); seekBy(-5); }
   });
   window.addEventListener("resize", drawWave);
 
@@ -838,6 +921,56 @@
   }
 
   id("btnClear").addEventListener("click", clearAll);
+
+  // ---------- v2: loop toggle + playback-speed cycle (session state only) ----------
+  var btnLoop = id("btnLoop"), btnSpeed = id("btnSpeed");
+  function applyLoop(){
+    if (audioEl) audioEl.loop = loopOn;
+    btnLoop.setAttribute("aria-pressed", loopOn ? "true" : "false");
+    btnLoop.classList.toggle("active", loopOn);
+  }
+  function toggleLoop(){ loopOn = !loopOn; applyLoop(); }
+  btnLoop.addEventListener("click", toggleLoop);
+  function applyRate(){
+    var r = RATES[rateIdx];
+    if (audioEl) audioEl.playbackRate = r;
+    btnSpeed.textContent = String(r) + "×";                // the button face IS the state ("1×", "1.25×")
+    btnSpeed.setAttribute("aria-label", "Playback speed: " + String(r) + "×");
+  }
+  btnSpeed.addEventListener("click", function(){ rateIdx = (rateIdx + 1) % RATES.length; applyRate(); });
+
+  // ---------- v2: Media Session — OS media keys + lock-screen metadata ----------
+  function updateMediaSession(){
+    if (!MS) return;
+    var t = tagInfo || {};
+    var art = [];
+    if (t.pictureUri){
+      var mm = /^data:(image\/[a-z0-9.+-]+);/i.exec(t.pictureUri);
+      art.push({ src: t.pictureUri, sizes: "300x300", type: mm ? mm[1] : "image/jpeg" });
+    }
+    try {
+      MS.metadata = new MediaMetadata({
+        title: t.title || baseName(currentName),
+        artist: t.artist || "",
+        album: t.album || "",
+        artwork: art
+      });
+    } catch (e){}
+  }
+  if (MS){
+    // setActionHandler throws for unknown actions in older engines — guard each one.
+    var msSet = function(action, fn){ try { MS.setActionHandler(action, fn); } catch (e){} };
+    msSet("play", function(){ if (audioEl){ var p = audioEl.play(); if (p && p["catch"]) p["catch"](function(){}); } });
+    msSet("pause", function(){ if (audioEl) audioEl.pause(); });
+    msSet("seekbackward", function(d){ seekBy(-((d && d.seekOffset) || 10)); });
+    msSet("seekforward", function(d){ seekBy((d && d.seekOffset) || 10); });
+    msSet("seekto", function(d){
+      if (!audioEl || !d || typeof d.seekTime !== "number" || !isFinite(audioEl.duration)) return;
+      audioEl.currentTime = Math.max(0, Math.min(audioEl.duration, d.seekTime));
+      syncWaveAria();
+      if (!rafId) drawWave();
+    });
+  }
 
   // Empty-state acts as an open button (great on mobile)
   empty.addEventListener("click", openDialog);
@@ -896,10 +1029,29 @@
         e.preventDefault();
         var go = id("routeGo"), no = id("routeDismiss");
         (doc.activeElement === go || go.disabled ? no : go).focus();
-        return;
       }
+      return;                                         // nothing else acts beneath the dialog
     }
-    if (e.key === "Escape") setNav(false);
+    if (e.key === "Escape"){ setNav(false); return; }
+    // ---------- v2 playback shortcuts (parity with video-viewer) ----------
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (body.classList.contains("nav-open")) return;  // the flyout nav owns the keyboard
+    if (!audioEl || !body.classList.contains("viewing")) return;
+    var t = e.target, tag = (t && t.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select" || (t && t.isContentEditable)) return;
+    if (t === audioEl) return;                        // the native controls handle their own keys
+    var k = e.key;
+    if (k === " " || k === "Spacebar"){
+      e.preventDefault();
+      if (audioEl.paused){ var p = audioEl.play(); if (p && p["catch"]) p["catch"](function(){}); }
+      else audioEl.pause();
+    }
+    else if (k === "ArrowRight"){ e.preventDefault(); seekBy(5); }
+    else if (k === "ArrowLeft"){ e.preventDefault(); seekBy(-5); }
+    else if (k === "ArrowUp"){ e.preventDefault(); audioEl.volume = Math.min(1, Math.round((audioEl.volume + 0.05) * 100) / 100); }
+    else if (k === "ArrowDown"){ e.preventDefault(); audioEl.volume = Math.max(0, Math.round((audioEl.volume - 0.05) * 100) / 100); }
+    else if (k === "m" || k === "M"){ audioEl.muted = !audioEl.muted; }
+    else if (k === "l" || k === "L"){ toggleLoop(); }
   });
 
   // ---------- Background color (chosen by the user, remembered in a cookie) ----------
