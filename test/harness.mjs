@@ -176,6 +176,8 @@ check("wav: body.viewing + duration > 0", await page.evaluate(() => {
 }));
 check("wav: title bar shows the filename", (await page.evaluate(() => document.getElementById("docTitle").textContent)) === "tone.wav"
   && (await page.title()).includes("tone.wav"));
+check("wav: URL reflects ?name=tone.wav", await page.evaluate(() =>
+  new URLSearchParams(location.search).get("name")) === "tone.wav");
 check("wav: meta line shows duration · format · size", await page.evaluate(() => {
   const t = document.getElementById("metaLine").textContent;
   return /0:01/.test(t) && /WAV/.test(t) && /KB|MB/.test(t);
@@ -208,6 +210,8 @@ check("clear: object URL revoked + empty state back", await page.evaluate((u) =>
   window.__urls.revoked.includes(u) &&
   !document.body.classList.contains("viewing") &&
   !document.getElementById("empty").hidden, secondUrl));
+check("clear: ?name= removed from the URL", await page.evaluate(() =>
+  new URLSearchParams(location.search).get("name")) === null);
 
 // -- hand-crafted ID3v2.3 MP3: the tag must render even without an MPEG decoder,
 //    and a missing decoder must surface the honest hint card (never silence).
@@ -442,6 +446,27 @@ check("receiver: 'Receiving' sub-line for an opener hand-off", await pop.evaluat
   /Song Name\.mp3/.test(document.querySelector(".empty-sub").textContent) &&
   location.hash === ""));
 await pop.close();
+
+// -- direct visit with ?name=: empty-state names the last-viewed file
+const p4 = await ctx.newPage();
+hook(p4);
+await p4.goto(`http://localhost:${PORT}/?name=${encodeURIComponent("Song Name.mp3")}`, { waitUntil: "load", timeout: 30000 });
+check("?name=: 'shared for' sub-line names the file", await p4.evaluate(() =>
+  /shared for/.test(document.querySelector(".empty-sub").textContent) &&
+  /Song Name\.mp3/.test(document.querySelector(".empty-sub").textContent)));
+await p4.close();
+
+// -- ?name= carrying markup renders as TEXT, never parsed as HTML (§ untrusted
+//    input reaching a viewer that renders content — this is the check for it)
+const p5 = await ctx.newPage();
+hook(p5);
+const HOSTILE_NAME = "<img src=x onerror=alert(1)>.mp3";
+await p5.goto(`http://localhost:${PORT}/?name=${encodeURIComponent(HOSTILE_NAME)}`, { waitUntil: "load", timeout: 30000 });
+check("?name=: hostile markup shows as literal text, never parsed", await p5.evaluate((name) => {
+  const sub = document.querySelector(".empty-sub");
+  return sub.textContent.includes(name) && sub.querySelector("img") === null;
+}, HOSTILE_NAME));
+await p5.close();
 await ctx.close();
 
 // -- fresh context with dark system scheme: must default dark
