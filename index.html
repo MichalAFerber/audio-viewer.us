@@ -1364,7 +1364,12 @@
         // ⁨…⁩ (FSI…PDI) bidi-isolate the untrusted name — same treatment as
         // the #fvh receiver above; this value is exactly as stranger-
         // controlled as that one once it is read back out of the URL.
-        lastSub.textContent = "Last viewed “⁨" + qName + "⁩”. Drop it back in to view it again.";
+        // Display-only, and it must stay that way: this string is read
+        // straight from the URL, so it is exactly as stranger-controlled as
+        // file.name or the decoded #fvh value above. No fact is asserted
+        // about whether anyone actually viewed it -- only that the link names
+        // it.
+        lastSub.textContent = "This link was shared for “⁨" + qName + "⁩”.";
       }
     }
   }

@@ -451,8 +451,8 @@ await pop.close();
 const p4 = await ctx.newPage();
 hook(p4);
 await p4.goto(`http://localhost:${PORT}/?name=${encodeURIComponent("Song Name.mp3")}`, { waitUntil: "load", timeout: 30000 });
-check("?name=: 'Last viewed' sub-line names the file", await p4.evaluate(() =>
-  /Last viewed/.test(document.querySelector(".empty-sub").textContent) &&
+check("?name=: 'shared for' sub-line names the file", await p4.evaluate(() =>
+  /shared for/.test(document.querySelector(".empty-sub").textContent) &&
   /Song Name\.mp3/.test(document.querySelector(".empty-sub").textContent)));
 await p4.close();
 
