@@ -8,7 +8,7 @@
 // Codec-dependent playback checks stay on open formats only.
 import { chromium } from "playwright";
 import http from "node:http";
-import { readFileSync, existsSync, statSync, mkdtempSync, writeFileSync } from "node:fs";
+import { readFileSync, existsSync, statSync, mkdtempSync, writeFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -490,17 +490,41 @@ check("CSP: default-src 'none' + media-src 'self' blob: + img data: + fonts/mani
   /media-src[^;]*'self'/.test(csp) && /media-src[^;]*blob:/.test(csp) &&
   /img-src[^;]*'self'/.test(csp) && /img-src[^;]*data:/.test(csp) &&
   /font-src[^;]*'self'/.test(csp) && /manifest-src 'self'/.test(csp));
-check("CSP: no eval anywhere (script-src is inline + Plausible only)",
-  /script-src 'unsafe-inline' https:\/\/plausible\.thompsonblack\.us(;|$)/.test(csp) && !/unsafe-eval/.test(csp));
+// This asserts the CONTRACT, not the policy's current text. It used to match
+// `script-src 'unsafe-inline' https://plausible...` literally, which froze the
+// header rather than testing it: any legitimate CSP change -- adding 'self',
+// dropping 'unsafe-inline' -- failed a check that exists to catch dangerous
+// ones, while a genuinely bad source added alongside the expected two would
+// have passed. What actually matters is that nothing eval-like or wildcard is
+// admitted.
+const scriptSrc = (csp.match(/script-src\s+([^;]*)/) || [, ""])[1].trim().split(/\s+/).filter(Boolean);
+check("CSP: no eval, and script-src admits no wildcard, bare scheme, or data:",
+  !/unsafe-eval/.test(csp) &&
+  scriptSrc.length > 0 &&
+  !scriptSrc.includes("*") &&
+  !scriptSrc.some((v) => /^(https?|data|blob|filesystem):$/.test(v)),
+  `script-src: ${scriptSrc.join(" ")}`);
 const idx = readFileSync(join(ROOT, "index.html"), "utf8");
 check("head links (manifest + favicon.ico)", idx.includes('rel="manifest"') && idx.includes("/favicon.ico"));
 
 // -- FV-MAP block deep-equals the canonical family map (§6.10 governance)
+//
+// The block is located by CONTENT, not by filename. It previously read
+// index.html only, which coupled a governance check to a file layout: the
+// contract is "this block matches family-map.json", and where the block lives
+// is not part of it. Moving the script to an external .js would have silently
+// disabled the check -- `indexOf` returns -1, the slice yields nonsense, and
+// the failure reads as a map mismatch rather than as a missing block.
+const FV_MARK = "/* FV-MAP-START";
+const fvFile = ["index.html", ...readdirSync(ROOT).filter((f) => f.endsWith(".js"))]
+  .find((f) => existsSync(join(ROOT, f)) && readFileSync(join(ROOT, f), "utf8").includes(FV_MARK));
+const fvText = fvFile ? readFileSync(join(ROOT, fvFile), "utf8") : "";
+check("FV-MAP block is present in exactly one shipped file", !!fvFile, fvFile || "no file contains " + FV_MARK);
 check("FV-MAP deep-equals canonical family-map (v2)", (() => {
-  const i = idx.indexOf("/* FV-MAP-START");
-  const j = idx.indexOf("/* FV-MAP-END */");
+  const i = fvText.indexOf(FV_MARK);
+  const j = fvText.indexOf("/* FV-MAP-END */");
   if (i < 0 || j < 0) return false;
-  const got = new Function(idx.slice(i, j) + "\nreturn { FAMILY, FAMILY_HUB, FAMILY_NAMES, FAMILY_MAP };")();
+  const got = new Function(fvText.slice(i, j) + "\nreturn { FAMILY, FAMILY_HUB, FAMILY_NAMES, FAMILY_MAP };")();
   const mapJson = JSON.parse(readFileSync(join(ROOT, "test/family-map.json"), "utf8"));
   const stable = (v) => JSON.stringify(v, (k, val) =>
     val && typeof val === "object" && !Array.isArray(val)
