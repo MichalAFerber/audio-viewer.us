@@ -497,7 +497,7 @@ check("CSP: default-src 'none' + media-src 'self' blob: + img data: + fonts/mani
 // ones, while a genuinely bad source added alongside the expected two would
 // have passed. What actually matters is that nothing eval-like or wildcard is
 // admitted.
-const scriptSrc = (csp.match(/script-src\s+([^;]*)/) || [, ""])[1].trim().split(/\s+/).filter(Boolean);
+const scriptSrc = (csp.match(/script-src\s+([^;]*)/) || [null, ""])[1].trim().split(/\s+/).filter(Boolean);
 check("CSP: no eval, and script-src admits no wildcard, bare scheme, or data:",
   !/unsafe-eval/.test(csp) &&
   scriptSrc.length > 0 &&
