@@ -349,7 +349,7 @@
         var body = u8.subarray(start, end);
         if (major === 4 && (f2 & 0x02)) body = deunsync(body);   // per-frame unsynchronisation
         if (m && !tags[m]){
-          var txt = cutAtNul(decodeText(body, 1, body.length, body[0])).replace(/\u0000+$/g, "");
+          var txt = cutAtNul(decodeText(body, 1, body.length, body[0])); while (txt.endsWith("\0")) txt = txt.slice(0, -1);
           txt = txt.replace(/^\s+|\s+$/g, "");
           if (fid === "TDRC" || fid === "TYER") txt = txt.slice(0, 4);
           if (txt) tags[m] = txt;
